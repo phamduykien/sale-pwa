@@ -6,7 +6,7 @@
         <!-- Logo/Title -->
         <q-toolbar-title class="text-primary text-weight-bold">
           <q-icon name="store" size="sm" class="q-mr-sm" />
-          SalePWA
+          GPBL Shop
         </q-toolbar-title>
 
         <!-- Search button -->
@@ -72,21 +72,21 @@
         <q-tab
           name="home"
           icon="home"
-          label="Trang chủ"
+          label="Tổng quan"
           @click="navigateTo('/')"
           :class="{ 'text-primary': $route.path === '/' }"
         />
         <q-tab
           name="categories"
           icon="category"
-          label="Danh mục"
+          label="Hàng hóa"
           @click="navigateTo('/categories')"
           :class="{ 'text-primary': $route.path === '/categories' }"
         />
         <q-tab
           name="cart"
           icon="shopping_cart"
-          label="Giỏ hàng"
+          label="Đơn hàng"
           @click="navigateTo('/cart')"
           :class="{ 'text-primary': $route.path === '/cart' || cartStore.totalItems > 0 }"
         >
@@ -103,7 +103,7 @@
         <q-tab
           name="profile"
           icon="person"
-          label="Tài khoản"
+          label="Khác"
           @click="navigateTo('/profile')"
           :class="{ 'text-primary': $route.path === '/profile' }"
         />
