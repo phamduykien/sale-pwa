@@ -1,81 +1,81 @@
 <template>
   <q-page>
-    <!-- Banner section -->
+    <!-- Header section -->
     <div class="bg-gradient-primary text-white q-pa-md">
-      <div class="text-h5 text-weight-bold q-mb-sm">Chào mừng đến SalePWA!</div>
-      <div class="text-body2">Khám phá những sản phẩm công nghệ tốt nhất</div>
+      <div class="text-h5 text-weight-bold q-mb-sm">Dashboard</div>
+      <div class="text-body2">Tổng quan hoạt động kinh doanh</div>
     </div>
 
-    <!-- Categories section -->
+    <!-- Stats Cards -->
     <div class="q-pa-md">
-      <div class="text-h6 text-weight-medium q-mb-md">Danh mục sản phẩm</div>
-      <q-scroll-area style="height: 120px; width: 100%;" class="q-mb-md">
-        <div class="row no-wrap q-gutter-sm">
-          <div
-            v-for="category in productStore.categories"
-            :key="category.id"
-            class="col-auto"
-          >
-            <q-card
-              flat
-              bordered
-              class="category-card cursor-pointer"
-              @click="goToCategory(category.id)"
-            >
-              <q-card-section class="text-center q-pa-md">
-                <q-icon
-                  :name="category.icon"
-                  size="2rem"
-                  :color="category.color"
-                  class="q-mb-sm"
-                />
-                <div class="text-caption text-weight-medium">{{ category.name }}</div>
-              </q-card-section>
-            </q-card>
-          </div>
+      <div class="row q-col-gutter-md">
+        <div class="col-12 col-sm-6 col-md-3">
+          <StatCard
+            title="Tổng doanh thu"
+            value="2.5 tỷ VNĐ"
+            :trend="15"
+            icon="payments"
+            icon-class="text-positive"
+          />
         </div>
-      </q-scroll-area>
-    </div>
-
-    <!-- Featured products -->
-    <div class="q-pa-md">
-      <div class="row items-center justify-between q-mb-md">
-        <div class="text-h6 text-weight-medium">Sản phẩm nổi bật</div>
-        <q-btn
-          flat
-          color="primary"
-          label="Xem tất cả"
-          size="sm"
-          @click="$router.push('/products')"
-        />
-      </div>
-
-      <q-inner-loading :showing="productStore.loading">
-        <q-spinner color="primary" size="3em" />
-      </q-inner-loading>
-
-      <div class="row q-gutter-md">
-        <div
-          v-for="product in productStore.featuredProducts"
-          :key="product.id"
-          class="col-5 col-sm-3 col-md-2"
-        >
-          <ProductCard :product="product" />
+        <div class="col-12 col-sm-6 col-md-3">
+          <StatCard
+            title="Số đơn hàng"
+            value="1,234"
+            :trend="8"
+            icon="shopping_cart"
+            icon-class="text-primary"
+          />
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <StatCard
+            title="Sản phẩm đã bán"
+            value="5,678"
+            :trend="-5"
+            icon="inventory_2"
+            icon-class="text-secondary"
+          />
+        </div>
+        <div class="col-12 col-sm-6 col-md-3">
+          <StatCard
+            title="Khách hàng mới"
+            value="256"
+            :trend="12"
+            icon="people"
+            icon-class="text-info"
+          />
         </div>
       </div>
     </div>
 
-    <!-- All products -->
+    <!-- Charts -->
     <div class="q-pa-md">
-      <div class="text-h6 text-weight-medium q-mb-md">Tất cả sản phẩm</div>
-      
-      <div class="row q-gutter-md">
-        <div
-          v-for="product in productStore.products"
-          :key="product.id"
-          class="col-5 col-sm-3 col-md-2"
-        >
-          <ProductCard :product="product" />
+      <div class="row q-col-gutter-md">
+        <!-- Revenue Chart -->
+        <div class="col-12 col-md-8">
+          <q-card>
+            <q-card-section>
+              <RevenueChart />
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Category Distribution -->
+        <div class="col-12 col-md-4">
+          <q-card>
+            <q-card-section>
+              <CategoryDistributionChart />
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Top Products -->
+        <div class="col-12">
+          <q-card>
+            <q-card-section>
+              <TopProductsChart />
+            </q-card-section>
+          </q-card>
         </div>
       </div>
     </div>
@@ -100,11 +100,12 @@
 <script setup>
 import { onMounted } from 'vue'
 import { useProductStore } from 'src/stores/product'
-import { useRouter } from 'vue-router'
-import ProductCard from 'src/components/ProductCard.vue'
+import StatCard from 'src/components/StatCard.vue'
+import RevenueChart from 'src/components/charts/RevenueChart.vue'
+import CategoryDistributionChart from 'src/components/charts/CategoryDistributionChart.vue'
+import TopProductsChart from 'src/components/charts/TopProductsChart.vue'
 
 const productStore = useProductStore()
-const router = useRouter()
 
 onMounted(() => {
   loadData()
@@ -115,13 +116,6 @@ async function loadData() {
     productStore.fetchProducts(),
     productStore.fetchCategories()
   ])
-}
-
-function goToCategory(categoryId) {
-  router.push({
-    path: '/categories',
-    query: { category: categoryId }
-  })
 }
 </script>
 
