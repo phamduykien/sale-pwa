@@ -23,21 +23,35 @@ ChartJS.register(
   CategoryScale
 )
 
-const chartData = {
-  labels: ['Điện thoại', 'Laptop', 'Tablet', 'Phụ kiện', 'Khác'],
-  datasets: [
-    {
-      backgroundColor: [
-        '#667eea',
-        '#764ba2',
-        '#6B8DD6',
-        '#8E72BC',
-        '#8B8CC7'
-      ],
-      data: [30, 25, 15, 20, 10]
+import { computed } from 'vue'
+import { useDashboardStore } from 'src/stores/dashboard'
+
+const dashboardStore = useDashboardStore()
+
+const chartData = computed(() => {
+  if (!dashboardStore.dashboardData?.categoryDistribution) {
+    return {
+      labels: [],
+      datasets: []
     }
-  ]
-}
+  }
+
+  return {
+    labels: dashboardStore.dashboardData.categoryDistribution.map(item => item.name),
+    datasets: [
+      {
+        backgroundColor: [
+          '#667eea',
+          '#764ba2',
+          '#6B8DD6',
+          '#8E72BC',
+          '#8B8CC7'
+        ],
+        data: dashboardStore.dashboardData.categoryDistribution.map(item => item.value)
+      }
+    ]
+  }
+})
 
 const chartOptions = {
   responsive: true,

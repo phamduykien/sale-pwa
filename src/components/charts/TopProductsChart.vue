@@ -25,16 +25,30 @@ ChartJS.register(
   LinearScale
 )
 
-const chartData = {
-  labels: ['iPhone 14', 'Samsung S23', 'MacBook Pro', 'iPad Air', 'AirPods Pro'],
-  datasets: [
-    {
-      label: 'Số lượng đã bán',
-      backgroundColor: '#667eea',
-      data: [150, 120, 100, 80, 60]
+import { computed } from 'vue'
+import { useDashboardStore } from 'src/stores/dashboard'
+
+const dashboardStore = useDashboardStore()
+
+const chartData = computed(() => {
+  if (!dashboardStore.dashboardData?.topProducts) {
+    return {
+      labels: [],
+      datasets: []
     }
-  ]
-}
+  }
+
+  return {
+    labels: dashboardStore.dashboardData.topProducts.map(item => item.name),
+    datasets: [
+      {
+        label: 'Số lượng đã bán',
+        backgroundColor: '#667eea',
+        data: dashboardStore.dashboardData.topProducts.map(item => item.soldQuantity)
+      }
+    ]
+  }
+})
 
 const chartOptions = {
   responsive: true,

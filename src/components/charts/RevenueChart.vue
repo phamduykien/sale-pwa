@@ -27,18 +27,32 @@ ChartJS.register(
   Legend
 )
 
-const chartData = {
-  labels: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'],
-  datasets: [
-    {
-      label: 'Doanh thu (triệu VNĐ)',
-      backgroundColor: 'rgba(102, 126, 234, 0.2)',
-      borderColor: '#667eea',
-      data: [40, 55, 45, 70, 65, 85],
-      fill: true,
+import { computed } from 'vue'
+import { useDashboardStore } from 'src/stores/dashboard'
+
+const dashboardStore = useDashboardStore()
+
+const chartData = computed(() => {
+  if (!dashboardStore.dashboardData?.revenueByMonth) {
+    return {
+      labels: [],
+      datasets: []
     }
-  ]
-}
+  }
+
+  return {
+    labels: dashboardStore.dashboardData.revenueByMonth.map(item => item.month),
+    datasets: [
+      {
+        label: 'Doanh thu (triệu VNĐ)',
+        backgroundColor: 'rgba(102, 126, 234, 0.2)',
+        borderColor: '#667eea',
+        data: dashboardStore.dashboardData.revenueByMonth.map(item => item.revenue / 1000000), // Chuyển sang đơn vị triệu
+        fill: true,
+      }
+    ]
+  }
+})
 
 const chartOptions = {
   responsive: true,
