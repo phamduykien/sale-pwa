@@ -127,9 +127,16 @@ const activeTab = ref('home')
 
 // Load cart from storage on mount
 onMounted(() => {
-  cartStore.loadCartFromStorage()
-  updateActiveTab()
-})
+  cartStore.loadCartFromStorage();
+  updateActiveTab();
+
+  if (route.path !== '/login') {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      router.push('/login');
+    }
+  }
+});
 
 // Watch route changes to update active tab
 watch(() => route.path, () => {

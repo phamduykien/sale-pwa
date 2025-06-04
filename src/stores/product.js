@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-// import { api } from 'src/boot/axios' // Will be used when integrating real API
+import { api } from 'src/boot/axios'
 
 export const useProductStore = defineStore('product', {
   state: () => ({
@@ -174,6 +174,47 @@ export const useProductStore = defineStore('product', {
 
     clearCurrentProduct() {
       this.currentProduct = null
+    },
+
+    async addProduct(productData) {
+      this.loading = true
+      this.error = null
+      try {
+        // Trong môi trường development, giả lập thêm sản phẩm
+        if (import.meta.env.DEV) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          const newProduct = {
+            id: this.products.length + 1,
+            name: productData.get('name'),
+            price: Number(productData.get('price')),
+            categoryId: Number(productData.get('categoryId')),
+            description: productData.get('description'),
+            image: URL.createObjectURL(productData.get('image')),
+            images: [],
+            stock: 10,
+            featured: false,
+            rating: 0,
+            reviews: 0
+          }
+          this.products.unshift(newProduct)
+          return newProduct
+        }
+
+        // Trong môi trường production, gọi API thật
+        const response = await api.post('/products', productData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        })
+        const newProduct = response.data
+        this.products.unshift(newProduct)
+        return newProduct
+      } catch (error) {
+        this.error = error.message || 'Có lỗi xảy ra khi thêm sản phẩm'
+        throw error
+      } finally {
+        this.loading = false
+      }
     }
   }
 })

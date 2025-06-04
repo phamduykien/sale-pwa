@@ -1,42 +1,21 @@
 <template>
   <q-page class="q-pa-md">
     <!-- Header -->
-    <div class="text-h5 text-weight-bold q-mb-lg">Danh mục sản phẩm</div>
-
-    <!-- Categories grid -->
-    <div class="row q-gutter-md q-mb-xl">
-      <div
-        v-for="category in productStore.categories"
-        :key="category.id"
-        class="col-5 col-sm-3 col-md-2"
-      >
-        <q-card
-          flat
-          bordered
-          class="category-card cursor-pointer text-center"
-          @click="selectCategory(category.id)"
-          :class="{ 'category-selected': selectedCategory === category.id }"
-        >
-          <q-card-section class="q-pa-lg">
-            <q-icon
-              :name="category.icon"
-              size="3rem"
-              :color="selectedCategory === category.id ? 'white' : category.color"
-              class="q-mb-md"
-            />
-            <div class="text-subtitle2 text-weight-medium">
-              {{ category.name }}
-            </div>
-            <div class="text-caption text-grey-6 q-mt-xs">
-              {{ getProductCountByCategory(category.id) }} sản phẩm
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
+    <div class="row items-center justify-between q-mb-lg">
+      <div class="text-h5 text-weight-bold">Hàng hóa</div>
+      <q-btn
+        color="primary"
+        icon="add"
+        label="Thêm hàng hóa"
+        @click="$router.push('/product/add')"
+      />
     </div>
 
+  
+    
+
     <!-- Filter bar -->
-    <div class="row items-center justify-between q-mb-md">
+    <!-- <div class="row items-center justify-between q-mb-md">
       <div class="text-h6 text-weight-medium">
         {{ getCategoryName(selectedCategory) }}
         <span class="text-caption text-grey-6">
@@ -44,7 +23,7 @@
         </span>
       </div>
       
-      <!-- Sort dropdown -->
+      
       <q-select
         v-model="sortBy"
         :options="sortOptions"
@@ -55,9 +34,9 @@
         emit-value
         map-options
       />
-    </div>
+    </div> -->
 
-    <!-- Products grid -->
+    <!-- Products list -->
     <div v-if="productStore.loading" class="flex flex-center q-py-xl">
       <q-spinner color="primary" size="3em" />
     </div>
@@ -76,38 +55,40 @@
       />
     </div>
 
-    <div v-else class="row q-gutter-md">
-      <div
-        v-for="product in sortedProducts"
-        :key="product.id"
-        class="col-5 col-sm-3 col-md-2"
-      >
-        <ProductCard :product="product" />
-      </div>
+    <div v-else>
+      <q-list separator>
+        <template v-for="product in sortedProducts" :key="product.id">
+          <router-link
+            :to="{ path: `/product/${product.id}` }"
+            class="text-black text-decoration-none"
+          >
+            <ProductListItem :product="product" />
+          </router-link>
+        </template>
+      </q-list>
     </div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useProductStore } from 'src/stores/product'
-import ProductCard from 'src/components/ProductCard.vue'
+import ProductListItem from 'src/components/ProductListItem.vue'
 
 const route = useRoute()
-const router = useRouter()
 const productStore = useProductStore()
 
 const selectedCategory = ref(null)
 const sortBy = ref('name')
 
-const sortOptions = [
-  { label: 'Tên A-Z', value: 'name' },
-  { label: 'Giá thấp đến cao', value: 'price_asc' },
-  { label: 'Giá cao đến thấp', value: 'price_desc' },
-  { label: 'Đánh giá cao nhất', value: 'rating' },
-  { label: 'Mới nhất', value: 'newest' }
-]
+// const sortOptions = [
+//   { label: 'Tên A-Z', value: 'name' },
+//   { label: 'Giá thấp đến cao', value: 'price_asc' },
+//   { label: 'Giá cao đến thấp', value: 'price_desc' },
+//   { label: 'Đánh giá cao nhất', value: 'rating' },
+//   { label: 'Mới nhất', value: 'newest' }
+// ]
 
 const filteredProducts = computed(() => {
   if (!selectedCategory.value) {
@@ -154,29 +135,29 @@ watch(() => route.query.category, (newCategoryId) => {
   }
 })
 
-function selectCategory(categoryId) {
-  selectedCategory.value = selectedCategory.value === categoryId ? null : categoryId
+// function selectCategory(categoryId) {
+//   selectedCategory.value = selectedCategory.value === categoryId ? null : categoryId
   
-  // Update URL query
-  if (selectedCategory.value) {
-    router.replace({
-      path: '/categories',
-      query: { category: selectedCategory.value }
-    })
-  } else {
-    router.replace('/categories')
-  }
-}
+//   // Update URL query
+//   if (selectedCategory.value) {
+//     router.replace({
+//       path: '/categories',
+//       query: { category: selectedCategory.value }
+//     })
+//   } else {
+//     router.replace('/categories')
+//   }
+// }
 
-function getProductCountByCategory(categoryId) {
-  return productStore.getProductsByCategory(categoryId).length
-}
+// function getProductCountByCategory(categoryId) {
+//   return productStore.getProductsByCategory(categoryId).length
+// }
 
-function getCategoryName(categoryId) {
-  if (!categoryId) return 'Tất cả sản phẩm'
-  const category = productStore.categories.find(c => c.id === categoryId)
-  return category ? category.name : 'Tất cả sản phẩm'
-}
+// function getCategoryName(categoryId) {
+//   if (!categoryId) return 'Tất cả sản phẩm'
+//   const category = productStore.categories.find(c => c.id === categoryId)
+//   return category ? category.name : 'Tất cả sản phẩm'
+// }
 </script>
 
 <style scoped>

@@ -1,7 +1,43 @@
 import { DashboardData } from '../types/statistics'
 import { mockDashboardData } from '../mocks/dashboard'
+import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+const api = axios.create({
+  baseURL: '/',
+});
+
+async function fetchConfig() {
+  try {
+    let response;
+    if (import.meta.env.PROD) {
+      // Fetch from backend in production
+      response = await fetch('/api/config'); // Replace with your actual backend endpoint
+    } else {
+      // Fetch from local file in development
+      response = await fetch('/config.json');
+    }
+    const config = await response.json();
+    API_URL = config.apiUrl;
+  } catch (error) {
+    console.error('Error fetching config:', error);
+  }
+}
+
+// Call fetchConfig to initialize API_URL
+fetchConfig();
+
+// Add a request interceptor to include the token
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('authToken');
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
 
 export class ApiService {
   static async getDashboardData(): Promise<DashboardData> {

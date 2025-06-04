@@ -1,0 +1,8 @@
+{
+  "apiUrl": "http://localhost:3000/api",
+  "theme": "light",
+  "features": {
+    "darkMode": false,
+    "notifications": true
+  }
+}
