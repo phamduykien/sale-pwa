@@ -4,10 +4,12 @@
     <div class="row items-center justify-between q-mb-lg">
       <div class="text-h5 text-weight-bold">Hàng hóa</div>
       <q-btn
-        color="primary"
+        round
+        color="grey-7"
+        text-color="white"
         icon="add"
-        label="Thêm hàng hóa"
         @click="$router.push('/product/add')"
+        aria-label="Thêm hàng hóa"
       />
     </div>
 
@@ -37,11 +39,11 @@
     </div> -->
 
     <!-- Products list -->
-    <div v-if="productStore.loading" class="flex flex-center q-py-xl">
+    <div v-if="isLoadingMore && inventoryItemList.length === 0" class="flex flex-center q-py-xl"> <!-- Hiển thị loading ban đầu -->
       <q-spinner color="primary" size="3em" />
     </div>
 
-    <div v-else-if="filteredProducts.length === 0" class="text-center q-py-xl">
+    <div v-else-if="!hasMore && inventoryItemList.length === 0" class="text-center q-py-xl"> <!-- Không có sản phẩm nào và không còn để tải -->
       <q-icon name="inventory_2" size="4rem" color="grey-4" class="q-mb-md" />
       <div class="text-h6 text-grey-6">Không có sản phẩm nào</div>
       <div class="text-body2 text-grey-5 q-mb-lg">
@@ -56,31 +58,37 @@
     </div>
 
     <div v-else>
-      <q-list separator>
-        <template v-for="product in sortedProducts" :key="product.id">
-          <router-link
-            :to="{ path: `/product/${product.id}` }"
-            class="text-black text-decoration-none"
-          >
-            <ProductListItem :product="product" />
-          </router-link>
+      <q-infinite-scroll @load="loadMoreItems" :offset="250" :disable="!hasMore || isLoadingMore">
+        <ProductList :items="inventoryItemList" @edit-item="handleEditItem" @delete-item="handleDeleteItem" />
+        <template v-slot:loading>
+          <div class="row justify-center q-my-md">
+            <q-spinner-dots color="primary" size="40px" />
+          </div>
         </template>
-      </q-list>
+      </q-infinite-scroll>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue' // Removed 'computed'
+import { useQuasar } from 'quasar'
 import { useRoute } from 'vue-router'
 import { useProductStore } from 'src/stores/product'
-import ProductListItem from 'src/components/ProductListItem.vue'
+import ProductList from 'src/components/ProductList.vue'
+import { InventoryItemService } from 'src/services/InventoryItemService';
 
 const route = useRoute()
 const productStore = useProductStore()
+const $q = useQuasar()
 
-const selectedCategory = ref(null)
-const sortBy = ref('name')
+// const selectedCategory = ref(null) // Bị ESLint báo lỗi no-unused-vars
+const inventoryItemList = ref([])
+const skip = ref(0)
+const take = ref(20) // Số lượng item lấy mỗi lần, có thể điều chỉnh
+const isLoadingMore = ref(false)
+const hasMore = ref(true)
+
 
 // const sortOptions = [
 //   { label: 'Tên A-Z', value: 'name' },
@@ -90,74 +98,121 @@ const sortBy = ref('name')
 //   { label: 'Mới nhất', value: 'newest' }
 // ]
 
-const filteredProducts = computed(() => {
-  if (!selectedCategory.value) {
-    return productStore.products
-  }
-  return productStore.getProductsByCategory(selectedCategory.value)
-})
+// const filteredProducts = computed(() => { // Không còn dùng filteredProducts theo cách cũ
+//   return productStore.products
+// })
 
-const sortedProducts = computed(() => {
-  const products = [...filteredProducts.value]
-  
-  switch (sortBy.value) {
-    case 'name':
-      return products.sort((a, b) => a.name.localeCompare(b.name))
-    case 'price_asc':
-      return products.sort((a, b) => a.price - b.price)
-    case 'price_desc':
-      return products.sort((a, b) => b.price - a.price)
-    case 'rating':
-      return products.sort((a, b) => (b.rating || 0) - (a.rating || 0))
-    case 'newest':
-      return products.sort((a, b) => b.id - a.id)
-    default:
-      return products
-  }
-})
 
 onMounted(async () => {
+  // Gọi loadMoreItems lần đầu để tải dữ liệu ban đầu
+  await loadMoreItems(0, () => {}); // Truyền một hàm rỗng cho done
+
+  // productStore có thể vẫn cần fetch dữ liệu khác
   await Promise.all([
-    productStore.fetchProducts(),
-    productStore.fetchCategories()
-  ])
-  
-  // Check if there's a category in query params
-  if (route.query.category) {
-    selectedCategory.value = parseInt(route.query.category)
-  }
+    productStore.fetchProducts(), // Giữ lại nếu cần cho các chức năng khác
+    productStore.fetchCategories() // Giữ lại nếu cần cho các chức năng khác
+  ]);
 })
+
+const loadMoreItems = async (index, done) => {
+  // Nếu done là null hoặc undefined (khi gọi từ onMounted), tạo một hàm rỗng
+  const callback = done || (() => {});
+
+  if (isLoadingMore.value || !hasMore.value) {
+    callback(true); // done(true) để báo không còn gì để tải
+    return;
+  }
+
+  isLoadingMore.value = true;
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      console.error('Không tìm thấy token xác thực.');
+      hasMore.value = false;
+      callback(true);
+      return;
+    }
+
+    const newItems = await InventoryItemService.getInventoryItems(token, skip.value, take.value);
+
+    if (newItems && newItems.length > 0) {
+      inventoryItemList.value.push(...newItems);
+      skip.value += newItems.length;
+      if (newItems.length < take.value) {
+        hasMore.value = false; // Không còn item nào nữa
+      }
+    } else {
+      hasMore.value = false; // Không có item mới hoặc lỗi
+    }
+    callback(!hasMore.value); // done(true) nếu không còn gì để tải
+  } catch (error) {
+    console.error('Lỗi khi tải thêm sản phẩm:', error);
+    hasMore.value = false; // Giả sử lỗi là không còn gì để tải
+    callback(true);
+  } finally {
+    isLoadingMore.value = false;
+  }
+}
 
 // Watch for route query changes
 watch(() => route.query.category, (newCategoryId) => {
   if (newCategoryId) {
-    selectedCategory.value = parseInt(newCategoryId)
+    // Xử lý khi category thay đổi nếu cần
+    console.log('Category changed to:', newCategoryId);
   }
 })
 
-// function selectCategory(categoryId) {
-//   selectedCategory.value = selectedCategory.value === categoryId ? null : categoryId
-  
-//   // Update URL query
-//   if (selectedCategory.value) {
-//     router.replace({
-//       path: '/categories',
-//       query: { category: selectedCategory.value }
-//     })
-//   } else {
-//     router.replace('/categories')
-//   }
-// }
+const handleEditItem = (item) => {
+  console.log('Edit item:', item)
+  // Navigate to edit page or show a dialog
+  // Ví dụ: router.push(`/product/edit/${item.inventory_item_id}`)
+  $q.notify({
+    color: 'info',
+    icon: 'edit',
+    message: `Chỉnh sửa: ${item.inventory_item_name}`
+  })
+}
 
-// function getProductCountByCategory(categoryId) {
-//   return productStore.getProductsByCategory(categoryId).length
-// }
-
-// function getCategoryName(categoryId) {
-//   if (!categoryId) return 'Tất cả sản phẩm'
-//   const category = productStore.categories.find(c => c.id === categoryId)
-//   return category ? category.name : 'Tất cả sản phẩm'
-// }
+const handleDeleteItem = (item) => {
+  console.log('Delete item:', item)
+  $q.dialog({
+    title: 'Xác nhận xóa',
+    message: `Bạn có chắc chắn muốn xóa "${item.inventory_item_name}" không?`,
+    persistent: true,
+    ok: {
+      label: 'Xóa',
+      color: 'negative',
+      flat: false
+    },
+    cancel: {
+      label: 'Hủy',
+      color: 'grey', 
+      flat: false,
+    }
+  }).onOk(async () => {
+    try {
+      // Gọi API xóa ở đây nếu cần
+      // await InventoryItemService.deleteInventoryItem(item.inventory_item_id, localStorage.getItem('token'));
+      
+      // Xóa item khỏi danh sách local
+      inventoryItemList.value = inventoryItemList.value.filter(
+        (i) => i.inventory_item_id !== item.inventory_item_id
+      );
+      $q.notify({
+        color: 'positive',
+        icon: 'delete_forever',
+        message: `Đã xóa: ${item.inventory_item_name}`
+      })
+    } catch (error) {
+      console.error('Lỗi khi xóa sản phẩm:', error);
+      $q.notify({
+        color: 'negative',
+        icon: 'error',
+        message: 'Xóa sản phẩm thất bại. Vui lòng thử lại.'
+      })
+    }
+  })
+}
 </script>
 
 <style scoped>

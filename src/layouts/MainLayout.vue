@@ -9,6 +9,10 @@
           GPBL Shop
         </q-toolbar-title>
 
+        <!-- Notification Test Buttons -->
+        <q-btn flat round icon="notifications_active" @click="requestNotificationPermission" title="Bật thông báo" class="q-mr-xs" />
+        <q-btn flat round icon="send" @click="testLocalNotification" title="Test thông báo local" class="q-mr-xs" />
+
         <!-- Search button -->
         <q-btn
           flat
@@ -116,7 +120,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCartStore } from 'src/stores/cart'
+import { useQuasar } from 'quasar'
 
+const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
@@ -136,6 +142,10 @@ onMounted(() => {
       router.push('/login');
     }
   }
+  // Hướng dẫn test push từ DevTools
+  console.log("Để giả lập Push Event từ server, mở Chrome DevTools > Application > Service Workers, tìm service worker của trang này, và sử dụng ô 'Push'.");
+  console.log("Payload ví dụ: {\"title\": \"Test Push\", \"body\": \"Đây là push từ DevTools!\", \"icon\": \"/icons/favicon-128x128.png\"}");
+  console.warn("LƯU Ý: Bạn cần thay thế 'YOUR_PUBLIC_VAPID_KEY_HERE' trong MainLayout.vue bằng VAPID key thực tế của bạn để push notification hoạt động đúng cách với server.");
 });
 
 // Watch route changes to update active tab
@@ -170,6 +180,114 @@ function performSearch() {
     })
     showSearch.value = false
   }
+}
+
+// --- Push Notification Logic ---
+// IMPORTANT: Replace with your actual VAPID public key
+const VAPID_PUBLIC_KEY = 'YOUR_PUBLIC_VAPID_KEY_HERE'; // <<<<<<< NHỚ THAY THẾ KEY NÀY
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    $q.notify({ type: 'negative', message: 'Trình duyệt này không hỗ trợ thông báo hoặc Service Worker.' });
+    return;
+  }
+
+  const permissionResult = await Notification.requestPermission();
+  if (permissionResult === 'granted') {
+    $q.notify({ type: 'positive', message: 'Đã cấp quyền thông báo!' });
+    subscribeUserToPush();
+  } else if (permissionResult === 'denied') {
+    $q.notify({ type: 'warning', message: 'Quyền thông báo đã bị từ chối.' });
+  } else {
+    $q.notify({ type: 'info', message: 'Quyền thông báo chưa được quyết định.' });
+  }
+}
+
+async function subscribeUserToPush() {
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.ready) {
+     $q.notify({ type: 'warning', message: 'Service Worker chưa sẵn sàng.' });
+    return;
+  }
+  
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      console.log('User IS already subscribed.');
+      console.log('Existing subscription:', JSON.stringify(subscription));
+      $q.notify({ type: 'info', message: 'Đã đăng ký nhận thông báo từ trước.' });
+      return;
+    }
+
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+
+    console.log('User is subscribed:', JSON.stringify(subscription));
+    $q.notify({ type: 'positive', message: 'Đăng ký nhận thông báo thành công!' });
+
+    // TODO: Send the subscription object to your server
+    // Ví dụ:
+    // await fetch('/api/subscribe', {
+    //   method: 'POST',
+    //   body: JSON.stringify(subscription),
+    //   headers: {
+    //     'Content-Type': 'application/json'
+    //   }
+    // });
+  } catch (error) {
+    console.error('Failed to subscribe the user: ', error);
+    if (Notification.permission === 'denied') {
+      $q.notify({ type: 'negative', message: 'Quyền thông báo bị từ chối. Không thể đăng ký.' });
+    } else {
+      $q.notify({ type: 'negative', message: `Đăng ký nhận thông báo thất bại: ${error.message}` });
+    }
+  }
+}
+
+function testLocalNotification() {
+  if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+    $q.notify({ type: 'negative', message: 'Thông báo hoặc Service Worker không được hỗ trợ.' });
+    return;
+  }
+
+  if (Notification.permission !== 'granted') {
+    $q.notify({ type: 'warning', message: 'Vui lòng cấp quyền thông báo trước.' });
+    requestNotificationPermission(); // Thử yêu cầu lại quyền
+    return;
+  }
+
+  navigator.serviceWorker.ready.then(registration => {
+    registration.showNotification('Thông báo thử nghiệm!', {
+      body: 'Đây là một thông báo local từ PWA.',
+      icon: '/icons/favicon-128x128.png', // Đảm bảo icon này tồn tại trong public/icons
+      badge: '/icons/favicon-96x96.png', // Đảm bảo icon này tồn tại trong public/icons
+      vibrate: [200, 100, 200],
+      tag: 'test-notification', // Tag giúp gom nhóm thông báo
+      data: { url: window.location.origin } // Dữ liệu kèm theo, ví dụ URL để mở khi click
+    });
+    $q.notify({ type: 'info', message: 'Đã gửi thông báo local. Kiểm tra thông báo của hệ thống.' });
+  }).catch(err => {
+    console.error('Service Worker not ready or error showing notification:', err);
+    $q.notify({ type: 'negative', message: 'Không thể hiển thị thông báo local.' });
+  });
 }
 </script>
 

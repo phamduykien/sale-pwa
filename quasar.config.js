@@ -147,28 +147,22 @@ export default defineConfig((/* ctx */) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'GenerateSW', // 'GenerateSW' or 'InjectManifest'
+      workboxMode: 'InjectManifest', // Chuyển sang InjectManifest
       injectPwaMetaTags: true,
-      swFilename: 'sw.js',
+      swFilename: 'sw.js', // Giữ nguyên hoặc đổi nếu muốn
       manifestFilename: 'manifest.json',
       useCredentialsForManifestTag: false,
-      extendGenerateSWOptions (cfg) {
-        cfg.skipWaiting = true
-        cfg.clientsClaim = true
-        cfg.runtimeCaching = [
-          {
-            urlPattern: /^https:\/\/api\..*/i,
-            handler: 'NetworkFirst',
-            options: {
-              networkTimeoutSeconds: 10,
-              cacheName: 'api-cache',
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+      // extendGenerateSWOptions không còn dùng trực tiếp khi ở InjectManifest
+      // thay vào đó, chúng ta sẽ cấu hình trong custom-service-worker.js
+      // Tuy nhiên, pwaExtendInjectManifestOptions có thể cần thiết
+      pwaExtendInjectManifestOptions: {
+        // Ví dụ: globIgnores: ['**/some-file.js']
       },
+      // Đường dẫn đến service worker tùy chỉnh (Quasar sẽ tìm file này)
+      // Mặc định là 'src-pwa/custom-service-worker.js' hoặc 'src-pwa/service-worker.js'
+      // Để chắc chắn, chúng ta có thể khai báo rõ:
+      // serviceWorker: 'src-pwa/custom-service-worker.js', // Kiểm tra tài liệu Quasar cho tên thuộc tính chính xác
+                                                        // Thông thường Quasar tự phát hiện nếu file tồn tại ở src-pwa
       extendManifestJson (json) {
         json.name = 'Sale PWA'
         json.short_name = 'SalePWA'
@@ -180,6 +174,9 @@ export default defineConfig((/* ctx */) => {
         json.categories = ['shopping', 'business']
         json.start_url = '/'
         json.scope = '/'
+        // Thêm gcm_sender_id để tương thích tốt hơn
+        // Giá trị này là mặc định và an toàn để sử dụng nếu không có Firebase Cloud Messaging project ID cụ thể.
+        json.gcm_sender_id = '103953800507' 
       }
     },
 

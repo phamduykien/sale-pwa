@@ -8,11 +8,13 @@ COPY . .
 
 RUN npm install
 
-RUN npm run build
+# Build the PWA application
+RUN npx quasar build -m pwa
 
 # Stage 2: Serve the application with nginx
 FROM nginx:alpine
 
-COPY --from=builder /app/sale-pwa/dist/spa /usr/share/nginx/html
+# Copy the PWA build output
+COPY --from=builder /app/sale-pwa/dist/pwa /usr/share/nginx/html
 
 EXPOSE 80
