@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { api } from 'src/boot/axios'
+import { api } from '../boot/axios'
 
 export const useProductStore = defineStore('product', {
   state: () => ({
@@ -174,6 +174,39 @@ export const useProductStore = defineStore('product', {
 
     clearCurrentProduct() {
       this.currentProduct = null
+    },
+
+    async updateProduct(productData) {
+      this.loading = true
+      this.error = null
+      try {
+        // Trong môi trường development, giả lập cập nhật sản phẩm
+        if (import.meta.env.DEV) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          const index = this.products.findIndex(p => p.id === productData.id)
+          if (index !== -1) {
+            this.products[index] = {
+              ...this.products[index],
+              ...productData
+            }
+          }
+          return this.products[index]
+        }
+
+        // Trong môi trường production, gọi API thật
+        const response = await api.put(`/products/${productData.id}`, productData)
+        const updatedProduct = response.data
+        const index = this.products.findIndex(p => p.id === updatedProduct.id)
+        if (index !== -1) {
+          this.products[index] = updatedProduct
+        }
+        return updatedProduct
+      } catch (error) {
+        this.error = error.message || 'Có lỗi xảy ra khi cập nhật sản phẩm'
+        throw error
+      } finally {
+        this.loading = false
+      }
     },
 
     async addProduct(productData) {

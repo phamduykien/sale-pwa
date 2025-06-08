@@ -81,11 +81,11 @@
           :class="{ 'text-primary': $route.path === '/' }"
         />
         <q-tab
-          name="categories"
-          icon="category"
+          name="products"
+          icon="inventory_2"
           label="Hàng hóa"
-          @click="navigateTo('/categories')"
-          :class="{ 'text-primary': $route.path === '/categories' }"
+          @click="navigateTo('/products')"
+          :class="{ 'text-primary': $route.path === '/products' }"
         />
         <q-tab
           name="cart"
@@ -157,8 +157,8 @@ function updateActiveTab() {
   const path = route.path
   if (path === '/') {
     activeTab.value = 'home'
-  } else if (path === '/categories') {
-    activeTab.value = 'categories'
+  } else if (path === '/products') {
+    activeTab.value = 'products'
   } else if (path === '/cart') {
     activeTab.value = 'cart'
   } else if (path === '/profile') {

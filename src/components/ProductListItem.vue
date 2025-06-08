@@ -1,5 +1,17 @@
 <template>
-  <q-item class="product-item q-pa-md" bordered v-ripple>
+  <q-item-swipeable
+    class="product-item q-pa-md"
+    bordered
+    @click="$router.push(`/product/${product.id}`)"
+    @left="onEdit"
+    left-content
+  >
+    <template v-slot:left>
+      <div class="row items-center">
+        <q-icon name="edit" color="info" size="md" class="q-ml-md" />
+      </div>
+    </template>
+
     <q-item-section side class="product-image-container">
       <q-img
         :src="product.image"
@@ -40,16 +52,23 @@
         </div>
       </q-item-label>
     </q-item-section>
-  </q-item>
+  </q-item-swipeable>
 </template>
 
 <script setup>
-defineProps({
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const props = defineProps({
   product: {
     type: Object,
     required: true
   }
 })
+
+function onEdit() {
+  router.push(`/product/${props.product.id}/edit`)
+}
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN', {

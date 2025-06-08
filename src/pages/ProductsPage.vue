@@ -73,12 +73,13 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue' // Removed 'computed'
 import { useQuasar } from 'quasar'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from 'src/stores/product'
 import ProductList from 'src/components/ProductList.vue'
 import { InventoryItemService } from 'src/services/InventoryItemService';
 
 const route = useRoute()
+const router = useRouter() // Thêm useRouter
 const productStore = useProductStore()
 const $q = useQuasar()
 
@@ -164,13 +165,16 @@ watch(() => route.query.category, (newCategoryId) => {
 
 const handleEditItem = (item) => {
   console.log('Edit item:', item)
-  // Navigate to edit page or show a dialog
-  // Ví dụ: router.push(`/product/edit/${item.inventory_item_id}`)
-  $q.notify({
-    color: 'info',
-    icon: 'edit',
-    message: `Chỉnh sửa: ${item.inventory_item_name}`
-  })
+  if (item && item.inventory_item_id) {
+    router.push(`/product/${item.inventory_item_id}`)
+  } else {
+    console.error('Không thể chỉnh sửa: ID hàng hóa không hợp lệ.', item)
+    $q.notify({
+      color: 'negative',
+      icon: 'error',
+      message: 'Không thể mở trang chỉnh sửa, ID hàng hóa không tồn tại.'
+    })
+  }
 }
 
 const handleDeleteItem = (item) => {

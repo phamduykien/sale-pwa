@@ -22,4 +22,18 @@ export class InventoryItemService {
       throw error;
     }
   }
+  static async getInventoryItem(token: string, id: string) {
+    try {
+      const response = await axios.get(API_URL + '/edit/' + id, {
+        headers: {
+          Authorization: token,
+        },
+      });
+    return response.data;
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu sản phẩm:', error);
+      throw error;
+    }
+
+  }
 }

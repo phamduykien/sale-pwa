@@ -7,7 +7,7 @@
         round
         dense
         class="q-mr-sm"
-        @click="$router.push('/categories')"
+        @click="$router.push('/products')"
       />
       <div class="text-h5 text-weight-bold">Thêm hàng hóa mới</div>
     </div>
@@ -72,7 +72,7 @@
         <q-btn
           label="Hủy"
           color="grey"
-          @click="$router.push('/categories')"
+          @click="$router.push('/products')"
           :disable="loading"
           flat
         />
@@ -160,7 +160,7 @@ async function onSubmit() {
       message: 'Thêm sản phẩm thành công!'
     })
 
-    router.push('/categories')
+    router.push('/products')
   } catch (error) {
     $q.notify({
       type: 'negative',
