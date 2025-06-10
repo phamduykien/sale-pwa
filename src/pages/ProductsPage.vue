@@ -77,6 +77,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from 'src/stores/product'
 import ProductList from 'src/components/ProductList.vue'
 import { InventoryItemService } from 'src/services/InventoryItemService';
+import { useNetwork } from 'src/composables/useNetwork'; // Thêm import
 
 const route = useRoute()
 const router = useRouter() // Thêm useRouter
@@ -103,24 +104,82 @@ const hasMore = ref(true)
 //   return productStore.products
 // })
 
+const { isOnline } = useNetwork(); // Sử dụng hook useNetwork
+
+const initializeData = async () => {
+  isLoadingMore.value = true; // Bắt đầu loading tổng thể cho dữ liệu ban đầu
+  inventoryItemList.value = [];
+  skip.value = 0;
+  hasMore.value = true; // Reset hasMore, sẽ được cập nhật bởi logic dưới
+
+  try {
+    // Luôn gọi fetchProducts từ store. Store sẽ xử lý online/offline.
+    await productStore.fetchProducts();
+
+    // Sau khi fetchProducts, productStore.products sẽ có dữ liệu từ API (nếu online)
+    // hoặc từ IndexedDB (nếu offline và có dữ liệu).
+    if (productStore.products && productStore.products.length > 0) {
+      inventoryItemList.value = [...productStore.products];
+      skip.value = productStore.products.length;
+      // Nếu số lượng item từ store < take, có thể không còn item nào khác từ nguồn này.
+      // Tuy nhiên, nếu online, infinite scroll vẫn có thể cố gắng tải thêm.
+      // hasMore sẽ được quản lý chính xác hơn bởi loadMoreItems khi online.
+      if (inventoryItemList.value.length < take.value && !isOnline.value) {
+          hasMore.value = false; // Nếu offline và dữ liệu ban đầu ít, thì không còn gì để tải thêm
+      } else if (inventoryItemList.value.length < take.value && isOnline.value) {
+          // Nếu online và dữ liệu ban đầu ít, vẫn có thể còn (API có thể trả về ít hơn take ở lần đầu)
+          // loadMoreItems sẽ xác định chính xác hơn
+          hasMore.value = true; 
+      } else {
+          hasMore.value = true; // Mặc định là còn nếu có dữ liệu ban đầu >= take
+      }
+
+    } else {
+      // Không có sản phẩm nào từ store (có thể do lỗi, hoặc không có data offline)
+      inventoryItemList.value = [];
+      hasMore.value = false; // Không có dữ liệu ban đầu, không thể tải thêm
+    }
+
+    // Nếu đang offline và không có dữ liệu nào được tải từ store,
+    // thì hasMore nên là false để q-infinite-scroll không cố gắng gọi loadMoreItems.
+    if (!isOnline.value && inventoryItemList.value.length === 0) {
+        hasMore.value = false;
+    }
+
+  } catch (error) {
+    console.error('Lỗi khi khởi tạo dữ liệu trang sản phẩm:', error);
+    inventoryItemList.value = []; // Đảm bảo list rỗng khi có lỗi
+    hasMore.value = false; // Không thể tải thêm khi có lỗi khởi tạo
+  } finally {
+    isLoadingMore.value = false; // Kết thúc loading ban đầu
+  }
+
+  // Fetch categories riêng biệt, không ảnh hưởng đến logic sản phẩm chính
+  await productStore.fetchCategories();
+};
 
 onMounted(async () => {
-  // Gọi loadMoreItems lần đầu để tải dữ liệu ban đầu
-  await loadMoreItems(0, () => {}); // Truyền một hàm rỗng cho done
-
-  // productStore có thể vẫn cần fetch dữ liệu khác
-  await Promise.all([
-    productStore.fetchProducts(), // Giữ lại nếu cần cho các chức năng khác
-    productStore.fetchCategories() // Giữ lại nếu cần cho các chức năng khác
-  ]);
-})
+  await initializeData();
+  // q-infinite-scroll sẽ tự động gọi loadMoreItems nếu điều kiện cho phép
+  // (ví dụ: inventoryItemList.value không đủ dài để cuộn VÀ hasMore là true)
+});
 
 const loadMoreItems = async (index, done) => {
-  // Nếu done là null hoặc undefined (khi gọi từ onMounted), tạo một hàm rỗng
   const callback = done || (() => {});
 
+  // 1. Nếu đang offline, không thực hiện gọi API để "load more"
+  if (!isOnline.value) {
+    console.log('Đang offline, không tải thêm sản phẩm từ API qua infinite scroll.');
+    // Không thay đổi hasMore ở đây vì nó đã được set bởi initializeData
+    // Hoặc có thể set hasMore = false nếu chắc chắn không thể load thêm khi offline
+    // hasMore.value = false; // Cân nhắc: Nếu offline, không thể load thêm từ API
+    callback(true); // Báo không còn gì để tải (từ API)
+    return;
+  }
+
+  // 2. Các điều kiện dừng khác (đang tải, hoặc đã báo hết)
   if (isLoadingMore.value || !hasMore.value) {
-    callback(true); // done(true) để báo không còn gì để tải
+    callback(true);
     return;
   }
 
@@ -128,27 +187,30 @@ const loadMoreItems = async (index, done) => {
   try {
     const token = localStorage.getItem('authToken');
     if (!token) {
-      console.error('Không tìm thấy token xác thực.');
-      hasMore.value = false;
+      console.error('Không tìm thấy token xác thực cho loadMoreItems.');
+      hasMore.value = false; // Không có token, không thể tải thêm
       callback(true);
       return;
     }
 
+    // skip.value được cập nhật từ initializeData hoặc các lần loadMoreItems trước
     const newItems = await InventoryItemService.getInventoryItems(token, skip.value, take.value);
 
     if (newItems && newItems.length > 0) {
       inventoryItemList.value.push(...newItems);
       skip.value += newItems.length;
       if (newItems.length < take.value) {
-        hasMore.value = false; // Không còn item nào nữa
+        hasMore.value = false; // API trả về ít hơn số lượng yêu cầu, coi như hết
+      } else {
+        hasMore.value = true; // Vẫn còn khả năng có thêm
       }
     } else {
-      hasMore.value = false; // Không có item mới hoặc lỗi
+      hasMore.value = false; // API không trả về item mới, hoặc trả về mảng rỗng
     }
-    callback(!hasMore.value); // done(true) nếu không còn gì để tải
+    callback(!hasMore.value); // done(true) nếu hasMore là false (hết)
   } catch (error) {
-    console.error('Lỗi khi tải thêm sản phẩm:', error);
-    hasMore.value = false; // Giả sử lỗi là không còn gì để tải
+    console.error('Lỗi khi tải thêm sản phẩm (loadMoreItems):', error);
+    hasMore.value = false; // Lỗi khi tải, coi như hết
     callback(true);
   } finally {
     isLoadingMore.value = false;

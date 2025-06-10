@@ -1,5 +1,14 @@
 <template>
   <q-layout view="hHh lpR fFf">
+    <!-- Offline indicator -->
+    <div v-if="showOfflineIndicator" class="offline-indicator">
+      <q-banner dense class="bg-warning text-white">
+        <template v-slot:avatar>
+          <q-icon name="wifi_off" />
+        </template>
+        Đang offline - Các thay đổi sẽ được đồng bộ khi có mạng
+      </q-banner>
+    </div>
     <!-- Header -->
     <q-header class="bg-white text-grey-8 shadow-2">
       <q-toolbar class="q-px-md">
@@ -88,22 +97,12 @@
           :class="{ 'text-primary': $route.path === '/products' }"
         />
         <q-tab
-          name="cart"
-          icon="shopping_cart"
+          name="orders"
+          icon="receipt_long"
           label="Đơn hàng"
-          @click="navigateTo('/cart')"
-          :class="{ 'text-primary': $route.path === '/cart' || cartStore.totalItems > 0 }"
-        >
-          <q-badge
-            v-if="cartStore.totalItems > 0"
-            color="red"
-            floating
-            rounded
-            style="top: 8px; right: 12px;"
-          >
-            {{ cartStore.totalItems }}
-          </q-badge>
-        </q-tab>
+          @click="navigateTo('/orders')"
+          :class="{ 'text-primary': $route.path === '/orders' }"
+        />        
         <q-tab
           name="profile"
           icon="person"
@@ -120,12 +119,23 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCartStore } from 'src/stores/cart'
+import { useProductStore } from 'src/stores/product'
 import { useQuasar } from 'quasar'
+import { useNetwork } from 'src/composables/useNetwork'
 
 const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
+const productStore = useProductStore()
+const { isOnline, showOfflineIndicator } = useNetwork()
+
+// Theo dõi sự thay đổi trạng thái mạng để đồng bộ
+watch(isOnline, async (newValue) => {
+  if (newValue) { // Khi có mạng trở lại
+    await productStore.syncOfflineChanges()
+  }
+})
 
 const showSearch = ref(false)
 const searchQuery = ref('')
@@ -159,8 +169,8 @@ function updateActiveTab() {
     activeTab.value = 'home'
   } else if (path === '/products') {
     activeTab.value = 'products'
-  } else if (path === '/cart') {
-    activeTab.value = 'cart'
+  } else if (path === '/orders') {
+    activeTab.value = 'orders'    
   } else if (path === '/profile') {
     activeTab.value = 'profile'
   }
@@ -306,5 +316,13 @@ function testLocalNotification() {
 
 .shadow-up-2 {
   box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.2), 0 -2px 2px rgba(0, 0, 0, 0.14), 0 -3px 1px -2px rgba(0, 0, 0, 0.12);
+}
+
+.offline-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
 }
 </style>

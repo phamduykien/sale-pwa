@@ -36,4 +36,21 @@ export class InventoryItemService {
     }
 
   }
+
+  ///api/dimob/InventoryItems/inventory-item
+  static async updateInventoryItem(token: string, payload: object) {
+    try {
+      const response = await axios.put(API_URL + '/inventory-item',payload, {
+        headers: {
+          Authorization: token,
+          "Content-Type":"application/json"
+        },
+      });
+    return response.data;
+    } catch (error) {
+      console.error('Lỗi khi lưu dữ liệu sản phẩm:', error);
+      throw error;
+    }
+
+  }
 }

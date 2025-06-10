@@ -9,23 +9,36 @@
         <q-avatar size="80px" color="primary" text-color="white" class="q-mb-md">
           <q-icon name="person" size="40px" />
         </q-avatar>
-        <div class="text-h6 text-weight-medium">Khách hàng</div>
-        <div class="text-body2 text-grey-6">Chưa đăng nhập</div>
-        
-        <div class="q-mt-lg q-gutter-md">
+        <!-- Hiển thị thông tin người dùng và nút dựa trên trạng thái đăng nhập -->
+        <div class="text-h6 text-weight-medium">{{ userDisplayName }}</div>
+        <div class="text-body2 text-grey-6">{{ userStatus }}</div>
+
+        <div v-if="isLoggedIn" class="q-mt-lg">
+          <q-btn
+            color="negative"
+            label="Đăng xuất"
+            icon="logout"
+            @click="handleLogout"
+            unelevated
+            class="full-width"
+          />
+        </div>
+        <div v-else class="q-mt-lg q-gutter-sm">
           <q-btn
             color="primary"
             label="Đăng nhập"
             icon="login"
-            @click="showLoginDialog"
+            @click="goToLogin" 
             unelevated
+            class="col-auto"
           />
           <q-btn
             color="secondary"
             label="Đăng ký"
             icon="person_add"
-            @click="showRegisterDialog"
+            @click="showRegisterDialog" 
             outline
+            class="col-auto"
           />
         </div>
       </q-card-section>
@@ -146,10 +159,68 @@
 </template>
 
 <script setup>
+import { ref, onMounted, computed, onUnmounted } from 'vue' // Thêm ref, onMounted, computed, onUnmounted
+import { useRouter } from 'vue-router' // Thêm useRouter
 import { useCartStore } from 'src/stores/cart'
-import { Dialog } from 'quasar'
+import { Dialog, useQuasar } from 'quasar' // Thêm useQuasar
 
 const cartStore = useCartStore()
+const router = useRouter() // Khởi tạo router
+const $q = useQuasar() // Khởi tạo Quasar
+
+// Trạng thái đăng nhập
+const authToken = ref(localStorage.getItem('authToken'))
+
+const isLoggedIn = computed(() => !!authToken.value)
+
+// Cập nhật authToken khi component được mounted
+onMounted(() => {
+  authToken.value = localStorage.getItem('authToken')
+  // Lắng nghe sự kiện storage để cập nhật nếu token thay đổi ở tab khác
+  window.addEventListener('storage', handleStorageChange);
+})
+
+// Xóa event listener khi component unmounted
+onUnmounted(() => {
+  window.removeEventListener('storage', handleStorageChange);
+});
+
+const handleStorageChange = (event) => {
+  if (event.key === 'authToken') {
+    authToken.value = event.newValue;
+  }
+};
+
+const userDisplayName = computed(() => {
+  // TODO: Trong tương lai, có thể giải mã token hoặc gọi API để lấy tên người dùng thực sự
+  return isLoggedIn.value ? 'Người dùng đã đăng nhập' : 'Khách hàng';
+});
+
+const userStatus = computed(() => {
+  return isLoggedIn.value ? 'Đã đăng nhập' : 'Chưa đăng nhập';
+});
+
+const handleLogout = () => {
+  localStorage.removeItem('authToken')
+  // Bỏ dòng authToken.value = null để tránh giao diện cập nhật trước khi chuyển trang.
+  // Khi trang được điều hướng đi, component này sẽ unmount,
+  // và nếu quay lại, onMounted sẽ đọc lại trạng thái đúng từ localStorage.
+  
+  // (Tùy chọn) Reset user store nếu có
+  // Ví dụ: userStore.clearUser() // Giả sử có userStore
+
+  $q.notify({
+    type: 'positive',
+    message: 'Đăng xuất thành công!',
+    icon: 'check_circle',
+    position: 'top'
+  })
+  router.push('/login')
+}
+
+const goToLogin = () => {
+  router.push('/login')
+}
 
 function formatPrice(price) {
   return new Intl.NumberFormat('vi-VN', {
@@ -158,17 +229,7 @@ function formatPrice(price) {
   }).format(price)
 }
 
-function showLoginDialog() {
-  Dialog.create({
-    title: 'Đăng nhập',
-    message: 'Tính năng đăng nhập sẽ được phát triển trong phiên bản tiếp theo.',
-    ok: {
-      label: 'Đã hiểu',
-      color: 'primary',
-      unelevated: true
-    }
-  })
-}
+
 
 function showRegisterDialog() {
   Dialog.create({

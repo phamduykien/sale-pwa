@@ -1,190 +1,106 @@
-# Sale PWA - Tóm tắt dự án hoàn thành
+# GPBL Shop - Progressive Web App
 
-## ✅ Những gì đã hoàn thành
+## Giới thiệu
+GPBL Shop là một Progressive Web App (PWA) được phát triển với Quasar Framework, Vue 3 và Pinia, cung cấp giải pháp quản lý bán hàng hiện đại và linh hoạt, có thể hoạt động cả online và offline.
 
-### 1. Cấu trúc project cơ bản
-- ✅ Khởi tạo Quasar project với PWA mode
-- ✅ Cấu hình quasar.config.js với PWA settings
-- ✅ Setup Pinia cho state management
-- ✅ Cấu hình Axios cho API calls
+## Tính năng chính
 
-### 2. State Management (Pinia)
-- ✅ **Product Store** (`src/stores/product.js`)
-  - Quản lý danh sách sản phẩm
-  - Quản lý danh mục
-  - Mock data với 6 sản phẩm mẫu
-  - Getters cho featured products, products by category
-  
-- ✅ **Cart Store** (`src/stores/cart.js`)
-  - Thêm/xóa sản phẩm khỏi giỏ hàng
-  - Tính toán tổng tiền và phí vận chuyển
-  - Lưu trữ persistent với LocalStorage
-  - Notifications khi thao tác
+### 1. Quản lý hàng hóa
+- Hiển thị danh sách sản phẩm với tìm kiếm và lọc
+- Thêm, sửa, xóa sản phẩm
+- Upload hình ảnh sản phẩm
+- Phân loại sản phẩm theo danh mục
+- Theo dõi tồn kho
 
-### 3. Layout & Navigation
-- ✅ **MainLayout** (`src/layouts/MainLayout.vue`)
-  - Header với logo, search và cart icon
-  - Bottom navigation cho mobile
-  - Badge hiển thị số lượng sản phẩm trong giỏ
-  - Search bar có thể toggle
+### 2. Đơn hàng và bán hàng
+- Giỏ hàng thông minh để tạo đơn hàng
+- Quản lý danh sách đơn hàng đã bán
+- Theo dõi trạng thái đơn hàng (hoàn thành, xuất hóa đơn, thu tiền)
+- Tự động tính toán giá trị và số lượng
 
-### 4. Pages đã tạo
-- ✅ **Trang chủ** (`src/pages/IndexPage.vue`)
-  - Banner chào mừng
-  - Danh mục sản phẩm với scroll ngang
-  - Sản phẩm nổi bật
-  - Grid layout responsive
+### 3. Thống kê và báo cáo
+- Dashboard với các chỉ số quan trọng
+- Biểu đồ doanh thu theo thời gian
+- Phân tích sản phẩm bán chạy
+- Phân bố doanh thu theo danh mục
 
-- ✅ **Giỏ hàng** (`src/pages/CartPage.vue`)
-  - Hiển thị sản phẩm trong giỏ
-  - Tăng/giảm số lượng
-  - Tính phí vận chuyển
-  - Tóm tắt đơn hàng
+### 4. PWA và Offline Support
+- Cài đặt như ứng dụng native trên thiết bị
+- Hoạt động offline với IndexedDB
+- Đồng bộ dữ liệu tự động khi có mạng
+- Cache thông minh cho static assets và API
+- Trang offline thân thiện người dùng
 
-- ✅ **Danh mục** (`src/pages/CategoriesPage.vue`)
-  - Lọc sản phẩm theo danh mục
-  - Sắp xếp theo nhiều tiêu chí
-  - Grid layout cho categories
+### 5. Push Notifications
+- Thông báo realtime cho các sự kiện quan trọng
+- Tùy chỉnh nội dung và hành động thông báo
+- Hỗ trợ service worker cho background sync
 
-- ✅ **Chi tiết sản phẩm** (`src/pages/ProductDetailPage.vue`)
-  - Image carousel
-  - Thông tin chi tiết sản phẩm
-  - Quantity selector
-  - Related products
+### 6. Giao diện người dùng
+- Thiết kế responsive trên mọi thiết bị
+- Bottom navigation cho mobile UX tốt
+- Dark mode (dự kiến)
+- Animations và transitions mượt mà
+- Loading states và error handling
 
-- ✅ **Tìm kiếm** (`src/pages/SearchPage.vue`)
-  - Tìm kiếm theo tên và mô tả
-  - Bộ lọc nâng cao (giá, rating, danh mục)
-  - Lưu lịch sử tìm kiếm
-  - Sort options
+### 7. Bảo mật
+- Xác thực người dùng
+- Phân quyền chức năng
+- Bảo vệ API endpoints
+- Xử lý token và phiên làm việc
 
-- ✅ **Profile** (`src/pages/ProfilePage.vue`)
-  - Menu tài khoản
-  - Thông tin về app
-  - Quick access to cart
+## Công nghệ sử dụng
 
-### 5. Components
-- ✅ **ProductCard** (`src/components/ProductCard.vue`)
-  - Responsive product card
-  - Sale badge
-  - Stock status
-  - Add to cart functionality
+### Frontend
+- Vue 3 Composition API
+- Quasar Framework
+- Pinia State Management
+- Vue Router
+- Axios HTTP Client
 
-### 6. Routing
-- ✅ Cấu hình đầy đủ routes trong `src/router/routes.js`
-- ✅ Dynamic routes cho product detail
-- ✅ Query parameters cho search và categories
+### PWA
+- Service Workers
+- Workbox
+- IndexedDB
+- Background Sync
+- Push API
 
-### 7. PWA Features
-- ✅ Service Worker configuration
-- ✅ Manifest file settings
-- ✅ Offline support ready
-- ✅ Install prompt ready
+### Build & Development
+- Vite
+- ESLint
+- Prettier
+- Git version control
 
-### 8. UI/UX Features
-- ✅ Responsive design (mobile-first)
-- ✅ Loading states
-- ✅ Error handling
-- ✅ Empty states
-- ✅ Smooth animations và transitions
-- ✅ Vietnamese localization
+## Kiến trúc và Thiết kế
 
-## 🚀 Cách chạy ứng dụng
+### State Management
+- Sử dụng Pinia stores cho:
+  - Product store: Quản lý sản phẩm
+  - Cart store: Quản lý giỏ hàng
+  - Order store: Quản lý đơn hàng
+  - Dashboard store: Quản lý thống kê
 
-### 1. Cài đặt dependencies
-```bash
-cd quasar-project
-npm install
-```
+### Offline Architecture
+- IndexedDB cho local storage
+- Background sync queue
+- Optimistic UI updates
+- Cache strategies:
+  - Network First cho API calls
+  - Cache First cho static assets
+  - Stale While Revalidate cho images
 
-### 2. Chạy development server
-```bash
-npm run dev
-# hoặc nếu gặp lỗi:
-npx @quasar/app-vite dev
-```
+### Components Structure
+- Layouts: Cấu trúc trang chính
+- Pages: Các trang chức năng
+- Components: UI components tái sử dụng
+- Composables: Logic tái sử dụng
 
-### 3. Build production
-```bash
-npm run build
-# Cho PWA:
-npx @quasar/app-vite build -m pwa
-```
+## Tính năng trong tương lai
+1. Quản lý khách hàng và CRM
+2. Tích hợp thanh toán trực tuyến
+3. Báo cáo nâng cao và xuất file
+4. Quản lý nhiều chi nhánh
+5. Tích hợp với các nền tảng bán hàng
 
-## 📱 Tính năng demo
-
-### Mock Data
-- 6 sản phẩm mẫu (iPhone, Samsung, MacBook, iPad, AirPods, Apple Watch)
-- 4 danh mục (Điện thoại, Laptop, Tablet, Phụ kiện)
-- Giá gốc và giá khuyến mãi
-- Rating và số lượng đánh giá
-- Stock information
-
-### Cart Features
-- Persistent storage
-- Shipping cost calculation
-- Free shipping for orders > 1M VND
-- Quantity validation
-
-### Search Features
-- Full-text search
-- Advanced filters
-- Recent searches
-- Sort options
-
-## 🔧 Những gì có thể mở rộng
-
-### Ngay lập tức
-1. **Tích hợp API thật**
-   - Thay thế mock data trong stores
-   - Add error handling
-   - Loading states
-
-2. **Authentication**
-   - Login/Register forms
-   - User management
-   - Protected routes
-
-3. **Payment**
-   - Payment gateway integration
-   - Order management
-   - Order history
-
-### Tương lai
-1. **Admin Dashboard**
-   - Product management
-   - Order management
-   - Analytics
-
-2. **Advanced Features**
-   - Push notifications
-   - Social sharing
-   - Reviews & ratings
-   - Wishlist
-
-3. **Performance**
-   - Image optimization
-   - Code splitting
-   - SEO optimization
-
-## 🎯 Trạng thái hiện tại
-
-✅ **HOÀN THÀNH**: Ứng dụng PWA đã sẵn sàng để demo và phát triển tiếp!
-
-- Giao diện hoàn chỉnh và responsive
-- Tất cả tính năng cơ bản hoạt động
-- PWA ready với offline support
-- Code structure tốt và scalable
-- Documentation đầy đủ
-
-## 📞 Next Steps
-
-1. Chạy `npm run dev` để test ứng dụng
-2. Tích hợp API backend thật
-3. Deploy lên hosting (Netlify, Vercel, etc.)
-4. Test PWA features trên mobile device
-5. Add more features theo roadmap
-
----
-
-**🎉 Chúc mừng! Sale PWA đã được phát triển thành công với đầy đủ tính năng cơ bản của một ứng dụng e-commerce hiện đại.**
+## Hướng dẫn phát triển
+Xem file SETUP_GUIDE.md cho hướng dẫn cài đặt và phát triển.
