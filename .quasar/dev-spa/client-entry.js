@@ -146,7 +146,9 @@ createQuasarApp(createApp, quasarUserOptions)
       
       import('boot/pinia'),
       
-      import('boot/axios')
+      import('boot/axios'),
+      
+      import('boot/numpad-directive')
       
     ]).then(bootFiles => {
       const boot = mapFn(bootFiles).filter(entry => typeof entry === 'function')

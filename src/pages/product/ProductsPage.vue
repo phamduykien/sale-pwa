@@ -58,20 +58,22 @@
     </div>
 
     <div v-else>
-      <q-infinite-scroll @load="loadMoreItems" :offset="250" :disable="!hasMore || isLoadingMore">
-        <ProductList :items="inventoryItemList" @edit-item="handleEditItem" @delete-item="handleDeleteItem" />
-        <template v-slot:loading>
+      <q-pull-to-refresh @refresh="refreshData">
+        <q-infinite-scroll @load="loadMoreItems" :offset="250" :disable="!hasMore || isLoadingMore">
+          <ProductList :items="inventoryItemList" @edit-item="handleEditItem" @delete-item="handleDeleteItem" />
+          <template v-slot:loading>
           <div class="row justify-center q-my-md">
             <q-spinner-dots color="primary" size="40px" />
           </div>
         </template>
       </q-infinite-scroll>
+    </q-pull-to-refresh>
     </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue' // Removed 'computed'
+import { ref, onMounted, onActivated, defineOptions } from 'vue' // Removed 'watch', 'computed'
 import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from 'src/stores/product'
@@ -90,6 +92,7 @@ const skip = ref(0)
 const take = ref(20) // Số lượng item lấy mỗi lần, có thể điều chỉnh
 const isLoadingMore = ref(false)
 const hasMore = ref(true)
+const initialLoadDone = ref(false) // Thêm cờ theo dõi tải lần đầu
 
 
 // const sortOptions = [
@@ -105,6 +108,10 @@ const hasMore = ref(true)
 // })
 
 const { isOnline } = useNetwork(); // Sử dụng hook useNetwork
+
+defineOptions({
+  name: 'ProductPage' // Đổi tên component thành multi-word
+})
 
 const initializeData = async () => {
   isLoadingMore.value = true; // Bắt đầu loading tổng thể cho dữ liệu ban đầu
@@ -152,16 +159,53 @@ const initializeData = async () => {
     hasMore.value = false; // Không thể tải thêm khi có lỗi khởi tạo
   } finally {
     isLoadingMore.value = false; // Kết thúc loading ban đầu
-  }
-
-  // Fetch categories riêng biệt, không ảnh hưởng đến logic sản phẩm chính
-  await productStore.fetchCategories();
+  }    
+  initialLoadDone.value = true; // Đánh dấu đã tải lần đầu
 };
 
 onMounted(async () => {
-  await initializeData();
-  // q-infinite-scroll sẽ tự động gọi loadMoreItems nếu điều kiện cho phép
-  // (ví dụ: inventoryItemList.value không đủ dài để cuộn VÀ hasMore là true)
+  //PDKIEN - Chỉ thực hiện khi Activated
+  // if (!initialLoadDone.value) {
+  //   await initializeData();
+  // }
+  
+});
+
+// Xử lý cập nhật khi component được kích hoạt lại (do keep-alive)
+onActivated(async () => { // Thêm async nếu cần gọi initializeData
+  if (route.query.updatedProductId) {
+    const updatedId = route.query.updatedProductId;
+    // Đảm bảo productStore đã có dữ liệu mới nhất
+    // Nếu productStore.updateProduct không tự động cập nhật productStore.products một cách reactive hoàn toàn
+    // hoặc nếu có khả năng dữ liệu store bị cũ, có thể cần fetch lại item đó.
+    // Tuy nhiên, dựa trên code productStore.updateProduct, nó đã cập nhật this.products.
+    const productFromStore = productStore.getProductById(updatedId);
+
+    if (productFromStore) {
+      // productFromStore.inventory_item_id là ID chính từ store
+      // Các item p trong inventoryItemList cũng nên có p.inventory_item_id
+      const index = inventoryItemList.value.findIndex(p => String(p.inventory_item_id) === String(productFromStore.inventory_item_id));
+      if (index !== -1) {
+        // Cập nhật item trong danh sách local với dữ liệu từ store
+        inventoryItemList.value[index] = { ...inventoryItemList.value[index], ...productFromStore };
+      } else {
+        // Nếu không tìm thấy item (ví dụ: item mới được thêm và chưa có trong danh sách hiện tại từ infinite scroll)
+        // Có thể cần thêm logic để thêm item mới vào đầu danh sách hoặc tải lại một phần nếu cần.
+        // Hiện tại, giả định item đã có trong danh sách.
+        console.warn(`Product with ID ${updatedId} not found in local list after update.`);
+        // Cân nhắc: Nếu không tìm thấy, có thể là do danh sách chưa tải hết.
+        // Trong trường hợp này, việc chỉ cập nhật item có thể không đủ.
+        // Tuy nhiên, nếu người dùng vừa sửa item đó, nó phải có trong danh sách đã tải.
+      }
+    }
+    // Xóa query param sau khi xử lý để tránh xử lý lại khi không cần thiết
+    router.replace({ query: { ...route.query, updatedProductId: undefined } });
+  } else if (!initialLoadDone.value) {
+    // Nếu component được kích hoạt lại và chưa từng tải dữ liệu ban đầu (trường hợp hiếm với keep-alive)
+    // thì mới gọi initializeData.
+    await initializeData();
+  }
+  // Nếu initialLoadDone.value là true và không có updatedProductId, không làm gì cả, giữ nguyên trạng thái.
 });
 
 const loadMoreItems = async (index, done) => {
@@ -217,13 +261,26 @@ const loadMoreItems = async (index, done) => {
   }
 }
 
+const refreshData = async (done) => {
+  // Reset trạng thái để tải lại từ đầu
+  skip.value = 0;
+  // inventoryItemList.value = []; // Không reset ở đây để tránh list nháy, initializeData sẽ làm
+  hasMore.value = true;
+  initialLoadDone.value = false; // Để initializeData chạy lại hoàn toàn
+  
+  await initializeData(); // Gọi hàm tải dữ liệu ban đầu
+  
+  // Sau khi tải xong, gọi done() để QPullToRefresh biết là đã hoàn thành
+  done();
+}
+
 // Watch for route query changes
-watch(() => route.query.category, (newCategoryId) => {
-  if (newCategoryId) {
-    // Xử lý khi category thay đổi nếu cần
-    console.log('Category changed to:', newCategoryId);
-  }
-})
+// watch(() => route.query.category, (newCategoryId) => {
+//   if (newCategoryId) {
+//     // Xử lý khi category thay đổi nếu cần
+//     console.log('Category changed to:', newCategoryId);
+//   }
+// })
 
 const handleEditItem = (item) => {
   console.log('Edit item:', item)

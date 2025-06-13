@@ -14,7 +14,9 @@ export default [
      *
      * ESLint requires "ignores" key to be the only one in this object
      */
-    // ignores: []
+    ignores: [
+      'src/composables/usingSample.vue' // Bỏ qua file note
+    ]
   },
 
   ...pluginQuasar.configs.recommended(),

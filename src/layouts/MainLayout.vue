@@ -71,7 +71,11 @@
 
     <!-- Main content -->
     <q-page-container>
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive include="ProductPage">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </q-page-container>
 
     <!-- Bottom Navigation -->
@@ -87,28 +91,28 @@
           icon="home"
           label="Tổng quan"
           @click="navigateTo('/')"
-          :class="{ 'text-primary': $route.path === '/' }"
+          :class="{ 'text-primary': activeTab === 'home' }"
         />
         <q-tab
           name="products"
           icon="inventory_2"
           label="Hàng hóa"
           @click="navigateTo('/products')"
-          :class="{ 'text-primary': $route.path === '/products' }"
+          :class="{ 'text-primary': activeTab === 'products' }"
         />
         <q-tab
           name="orders"
           icon="receipt_long"
           label="Đơn hàng"
           @click="navigateTo('/orders')"
-          :class="{ 'text-primary': $route.path === '/orders' }"
+          :class="{ 'text-primary': activeTab === 'orders' }"
         />        
         <q-tab
           name="profile"
           icon="person"
           label="Khác"
           @click="navigateTo('/profile')"
-          :class="{ 'text-primary': $route.path === '/profile' }"
+          :class="{ 'text-primary': activeTab === 'profile' }"
         />
       </q-tabs>
     </q-footer>
@@ -167,12 +171,17 @@ function updateActiveTab() {
   const path = route.path
   if (path === '/') {
     activeTab.value = 'home'
-  } else if (path === '/products') {
+  } else if (path.startsWith('/products') || path.startsWith('/product/')) { // Kiểm tra nếu path bắt đầu bằng /products hoặc /product/
     activeTab.value = 'products'
   } else if (path === '/orders') {
     activeTab.value = 'orders'    
   } else if (path === '/profile') {
     activeTab.value = 'profile'
+  } else {
+    // Nếu không khớp với các tab chính, có thể không active tab nào
+    // hoặc active một tab mặc định tùy theo logic mong muốn
+    // Ví dụ: activeTab.value = null; // Để không có tab nào active
+    // Hoặc giữ nguyên giá trị hiện tại nếu không muốn thay đổi
   }
 }
 

@@ -16,6 +16,7 @@
           label="Đơn giá"
           filled
           type="number"
+          v-numpad
           :rules="[
             val => !!val || 'Vui lòng nhập đơn giá',
             val => val > 0 || 'Đơn giá phải lớn hơn 0'
@@ -27,6 +28,7 @@
           label="Giá sau thuế"
           filled
           type="number"
+        
            :rules="[
             val => !!val || 'Vui lòng nhập giá sau thuế',
             val => val > 0 || 'Giá sau thuế phải lớn hơn 0'
@@ -40,6 +42,7 @@
           label="Tồn kho"
           filled
           type="number"
+          v-numpad="{ allowDecimal: false }" 
           :rules="[val => val >= 0 || 'Số lượng tồn kho không thể âm']"
         />
 
@@ -47,7 +50,7 @@
           <q-btn
             label="Hủy"
             color="grey"
-            :to="{ name: 'index' }"
+            :to="{ name: 'products' }" 
             no-caps
           />
           <q-btn
@@ -67,8 +70,9 @@
 import { ref, onMounted } from 'vue' // Xóa 'computed'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { useProductStore } from '../stores/product'
+import { useProductStore } from '../../stores/product'
 import { InventoryItemService } from 'src/services/InventoryItemService' // Thêm import
+import { EDIT_MODE } from 'src/constants'
 
 const $q = useQuasar()
 const route = useRoute()
@@ -91,9 +95,7 @@ onMounted(async () => {
     $q.notify({ type: 'negative', message: 'Không tìm thấy ID sản phẩm.' })
     router.push('/') // Hoặc một trang lỗi/danh sách sản phẩm
     return
-  }
-
-  await productStore.fetchCategories() // Giữ lại để lấy danh sách danh mục
+  } 
 
   try {
     const token = localStorage.getItem('authToken')
@@ -108,6 +110,7 @@ onMounted(async () => {
     if (productData) {
       // Ánh xạ dữ liệu từ API vào form
       // Giả sử API trả về các trường tương ứng hoặc cần ánh xạ lại
+      productData.State=EDIT_MODE.Edit;//Editmode
       form.value = productData;
     } else {
       $q.notify({ type: 'negative', message: 'Không tìm thấy thông tin sản phẩm.' })
@@ -148,7 +151,7 @@ async function onSubmit() {
       })
     }
     
-    router.push('/')
+    router.push({ name: 'products', query: { updatedProductId: route.params.id } })
   } catch (error) { // ESLint: 'error' is defined but never used - Sửa: Thêm console.error
     console.error('Lỗi khi cập nhật sản phẩm:', error)
     $q.notify({

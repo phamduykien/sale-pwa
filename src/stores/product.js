@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { api } from '../boot/axios'
+// import { api } from '../boot/axios' // 'api' is defined but never used.
 import { indexedDBService } from '../services/IndexedDBService'
 import { InventoryItemService } from '../services/InventoryItemService' // Thêm import
 import { useNetwork } from '../composables/useNetwork'
@@ -9,6 +9,7 @@ import { Notify } from 'quasar'
  * Store quản lý sản phẩm với hỗ trợ offline
  */
 export const useProductStore = defineStore('product', {
+  // Store for product management
   state: () => ({
     products: [],
     categories: [],
@@ -24,7 +25,8 @@ export const useProductStore = defineStore('product', {
      * @returns {Function} Function trả về sản phẩm theo ID
      */
     getProductById: (state) => {
-      return (id) => state.products.find(product => product.id === id)
+      // Giả định rằng 'id' truyền vào đây là inventory_item_id
+      return (id) => state.products.find(product => String(product.inventory_item_id) === String(id))
     },
     getProductsByCategory: (state) => {
       return (categoryId) => state.products.filter(product => product.categoryId === categoryId)
@@ -62,31 +64,17 @@ export const useProductStore = defineStore('product', {
         // Nếu online, gọi API và lưu vào IndexedDB
         const token = localStorage.getItem('authToken');
         if (!token) {
-          // Notify.create({
-          //   type: 'negative',
-          //   message: 'Không tìm thấy token xác thực. Không thể tải sản phẩm từ API.'
-          // });
-          // Quyết định xem có nên throw error hay không. Nếu throw, catch bên dưới sẽ xử lý.
-          // Nếu không throw, có thể thử tải từ IndexedDB như một fallback, hoặc để products rỗng.
-          // Hiện tại, để giống logic offline, sẽ throw error.
           throw new Error('Token xác thực không tìm thấy.');
         }
 
-        // Gọi API thật sự để lấy danh sách sản phẩm
-        // Lấy 50 sản phẩm đầu tiên (skip=0, take=50) làm mặc định cho store
-        // InventoryItemService.getInventoryItems trả về response.data.Data
         const apiProducts = await InventoryItemService.getInventoryItems(token, 0, 50);
 
         if (apiProducts && Array.isArray(apiProducts)) {
           this.products = apiProducts;
         } else {
-          // Xử lý trường hợp API không trả về dữ liệu mong đợi
           console.warn('API không trả về danh sách sản phẩm hợp lệ. Sử dụng danh sách rỗng.');
           this.products = [];
         }
-
-        // Lưu products mới từ API vào IndexedDB để sử dụng offline
-        // saveProducts đã có store.clear() nên sẽ ghi đè dữ liệu cũ.
         await indexedDBService.saveProducts(this.products);
       } catch (error) {
         this.error = error.message;
@@ -99,26 +87,11 @@ export const useProductStore = defineStore('product', {
         this.loading = false
       }
     },
-
-    async fetchCategories() {
-      try {
-        // Mock data để demo
-        this.categories = [
-          { id: 1, name: 'Điện thoại', icon: 'smartphone', color: '#e91e63' },
-          { id: 2, name: 'Laptop', icon: 'laptop', color: '#2196f3' },
-          { id: 3, name: 'Tablet', icon: 'tablet', color: '#ff9800' },
-          { id: 4, name: 'Phụ kiện', icon: 'headphones', color: '#4caf50' }
-        ]
-      } catch (error) {
-        this.error = error.message
-        console.error('Error fetching categories:', error)
-      }
-    },
+    
 
     async fetchProductById(id) {
       this.loading = true
       try {
-        // Trong thực tế sẽ gọi API
         this.currentProduct = this.getProductById(id)
       } catch (error) {
         this.error = error.message
@@ -146,45 +119,85 @@ export const useProductStore = defineStore('product', {
       const { isOnline } = useNetwork()
 
       try {
-        const index = this.products.findIndex(p => p.id === productData.id)
+        // productData.id từ EditProductPage chính là inventory_item_id
+        const productDataIdStr = String(productData.id); 
+        const index = this.products.findIndex(p => String(p.inventory_item_id) === productDataIdStr);
+        
+        let productToReturn = null;
+
         if (index !== -1) {
           this.products[index] = {
             ...this.products[index],
             ...productData
-          }
+          };
+          productToReturn = this.products[index];
+        } else {
+          console.warn(`Product with ID ${productDataIdStr} not found for update.`);
+          // Không throw lỗi ở đây để cho phép offline mode vẫn có thể thử lưu pending action
+          // productToReturn sẽ là null
         }
 
-        // Nếu offline, lưu action để sync sau
         if (!isOnline.value) {
-          await indexedDBService.addPendingAction({
-            type: 'UPDATE_PRODUCT',
-            data: productData
-          })
-          Notify.create({
-            type: 'info',
-            message: 'Sản phẩm sẽ được cập nhật khi có kết nối mạng'
-          })
-          return this.products[index]
+          if (index !== -1) { // Chỉ lưu pending action nếu sản phẩm tồn tại và đã được cập nhật cục bộ
+            await indexedDBService.addPendingAction({
+              type: 'UPDATE_PRODUCT',
+              data: productData
+            });
+            Notify.create({
+              type: 'info',
+              message: 'Sản phẩm sẽ được cập nhật khi có kết nối mạng.'
+            });
+          }
+          return productToReturn;
         }
 
-        // Nếu online, gửi lên server
+        // Nếu online và sản phẩm tồn tại trong store
+        if (index === -1) {
+            console.error(`Skipping API update for non-existent product ID ${productDataIdStr} in local store.`);
+            // Có thể throw lỗi ở đây nếu muốn chặt chẽ hơn, 
+            // hoặc trả về null/undefined để báo hiệu cập nhật không thành công trên server.
+            // throw new Error(`Cannot update product: ID ${productDataIdStr} not found in local store.`);
+            return productToReturn; // Trả về null vì không có gì để cập nhật trên server
+        }
+        
         const token = localStorage.getItem('authToken');
         if (!token) {
-          // Quyết định xem có nên throw error hay không.
-          // Hiện tại, để giống logic offline, sẽ throw error.
           throw new Error('Token xác thực không tìm thấy.');
         }
-        // Gọi service để cập nhật sản phẩm
-        // Giả sử InventoryItemService.updateInventoryItem trả về sản phẩm đã cập nhật
-        // và cần productData.id cũng như toàn bộ productData
-        const updatedProduct = await InventoryItemService.updateInventoryItem(token, productData.id, productData);
+        
+        const updatedProductFromServer = await InventoryItemService.updateInventoryItem(token, productData);
 
-        if (index !== -1) {
-          this.products[index] = updatedProduct;
+        // Tìm lại index phòng trường hợp ID từ server có thể khác (mặc dù thường là giống)
+        // Giả sử updatedProductFromServer cũng có trường inventory_item_id hoặc một trường ID tương đương
+        // Nếu API trả về ID khác, cần ánh xạ lại ở đây. Giả sử API trả về inventory_item_id.
+        const serverIndex = this.products.findIndex(p => String(p.inventory_item_id) === String(updatedProductFromServer.inventory_item_id));
+        if (serverIndex !== -1) {
+          this.products[serverIndex] = updatedProductFromServer;
+          productToReturn = updatedProductFromServer;
+        } else {
+          // Trường hợp này không nên xảy ra nếu ID không đổi và sản phẩm đã tồn tại trước đó.
+          // Nếu xảy ra, có thể là ID đã thay đổi trên server, hoặc sản phẩm đã bị xóa khỏi store bởi một tiến trình khác.
+          console.warn('Product not found in local store after server update, or ID mismatch. Adding/updating with server data.');
+          // Quyết định: Thêm mới nếu không tìm thấy, hoặc cập nhật item có ID ban đầu nếu ID không đổi.
+          // Để an toàn, nếu không tìm thấy sau khi server trả về, có thể thêm nó vào store.
+          // Tuy nhiên, nếu ID ban đầu (productData.id) vẫn còn trong store nhưng khác với updatedProductFromServer.id,
+          // thì cần cẩn thận để không tạo bản sao.
+          // Giả định đơn giản: nếu serverIndex không tìm thấy, nhưng index ban đầu tìm thấy, cập nhật tại index ban đầu.
+          // Nếu cả hai không tìm thấy (index === -1), thì đây là lỗi logic.
+          if (index !== -1 && String(this.products[index].inventory_item_id) === productDataIdStr) { // Đảm bảo vẫn là item đó
+             this.products[index] = updatedProductFromServer; // Cập nhật item cũ với data từ server
+             productToReturn = updatedProductFromServer;
+          } else {
+            // Nếu không tìm thấy item ban đầu, hoặc item đó đã thay đổi ID một cách không mong muốn
+            // thì thêm item mới từ server vào.
+            this.products.push(updatedProductFromServer);
+            productToReturn = updatedProductFromServer;
+            console.log('Added product from server as it was not found or ID changed:', updatedProductFromServer);
+          }
         }
-        // Cập nhật IndexedDB
+        
         await indexedDBService.saveProducts(this.products);
-        return updatedProduct;
+        return productToReturn;
       } catch (error) {
         this.error = error.message || 'Có lỗi xảy ra khi cập nhật sản phẩm';
         Notify.create({
@@ -209,104 +222,122 @@ export const useProductStore = defineStore('product', {
 
       try {
         const newProduct = {
-          id: Date.now(), // Tạm thời dùng timestamp làm id
+          // id: Date.now(), // Tạm thời dùng timestamp làm id, server sẽ trả về id thật
           name: productData.get('name'),
           price: Number(productData.get('price')),
           categoryId: Number(productData.get('categoryId')),
           description: productData.get('description'),
-          image: URL.createObjectURL(productData.get('image')),
+          // image: URL.createObjectURL(productData.get('image')), // Sẽ được xử lý bởi server
           images: [],
-          stock: 10,
-          featured: false,
+          stock: Number(productData.get('stock') || 0), // Giả sử có trường stock
+          featured: false, // Mặc định
           rating: 0,
-          reviews: 0
-        }
-        this.products.unshift(newProduct)
+          reviews: 0,
+          // Thêm các trường khác từ productData nếu cần
+          // Ví dụ: unit_price, unit_price_after_tax, instock
+          unit_price: Number(productData.get('unit_price')),
+          unit_price_after_tax: Number(productData.get('unit_price_after_tax')),
+          instock: Number(productData.get('instock')),
+        };
 
-        // Nếu offline, lưu action để sync sau
         if (!isOnline.value) {
+          // Offline: tạo ID tạm thời và thêm vào đầu danh sách
+          const tempId = `offline_${Date.now()}`;
+          const offlineProduct = { ...newProduct, id: tempId, isOffline: true };
+          this.products.unshift(offlineProduct);
           await indexedDBService.addPendingAction({
             type: 'ADD_PRODUCT',
-            data: newProduct
-          })
+            data: newProduct // Lưu dữ liệu gốc không có ID tạm
+          });
           Notify.create({
             type: 'info',
-            message: 'Sản phẩm sẽ được thêm khi có kết nối mạng'
-          })
-          return newProduct
+            message: 'Sản phẩm sẽ được thêm khi có kết nối mạng.'
+          });
+          return offlineProduct;
         }
 
-        // Nếu online, gửi lên server
-        const response = await api.post('/products', productData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        })
-        const serverProduct = response.data
-        // Cập nhật lại id và data từ server
-        const index = this.products.findIndex(p => p.id === newProduct.id)
-        if (index !== -1) {
-          this.products[index] = serverProduct
+        // Online: gửi lên server
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          throw new Error('Token xác thực không tìm thấy.');
         }
-        // Cập nhật IndexedDB
-        await indexedDBService.saveProducts(this.products)
-        return serverProduct
+        // InventoryItemService.createInventoryItem nên nhận object, không phải FormData nếu API backend mong đợi JSON
+        // Nếu API nhận FormData, thì giữ nguyên productData
+        // Giả sử InventoryItemService.createInventoryItem nhận object:
+        const serverProduct = await InventoryItemService.createInventoryItem(token, newProduct);
+        
+        this.products.unshift(serverProduct); // Thêm sản phẩm từ server vào đầu danh sách
+        await indexedDBService.saveProducts(this.products); // Lưu lại toàn bộ danh sách
+        return serverProduct;
+
       } catch (error) {
-        this.error = error.message || 'Có lỗi xảy ra khi thêm sản phẩm'
-        throw error
+        this.error = error.message || 'Có lỗi xảy ra khi thêm sản phẩm';
+        Notify.create({
+          type: 'negative',
+          message: 'Không thể thêm sản phẩm: ' + (error.response?.data?.message || error.message)
+        });
+        throw error;
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
 
-    // Đồng bộ các thay đổi offline khi có mạng
-    /**
-     * Đồng bộ các thay đổi offline khi có mạng
-     * @returns {Promise<void>}
-     */
     async syncOfflineChanges() {
       const { isOnline } = useNetwork()
       if (!isOnline.value) return
 
       const pendingActions = await indexedDBService.getPendingActions()
+      if (pendingActions.length === 0) return;
+
+      Notify.create({ type: 'info', message: `Đang đồng bộ ${pendingActions.length} thay đổi...` });
+
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        Notify.create({ type: 'negative', message: 'Lỗi đồng bộ: Token không tìm thấy.' });
+        return;
+      }
 
       for (const action of pendingActions) {
         try {
           switch (action.type) {
-            case 'ADD_PRODUCT':
-              await api.post('/products', action.data)
-              break
-            case 'UPDATE_PRODUCT': {
-              // Khi đồng bộ, cũng cần gọi service
-              const token = localStorage.getItem('authToken');
-              if (!token) {
-                console.error('Token không tìm thấy khi đồng bộ UPDATE_PRODUCT');
-                // Quyết định xem có nên bỏ qua action này hay thử lại sau
-                // Hiện tại, sẽ log lỗi và không remove action nếu token không có
-                Notify.create({
-                  type: 'negative',
-                  message: 'Lỗi đồng bộ: Token không tìm thấy cho việc cập nhật sản phẩm.'
-                });
-                continue; // Bỏ qua action này và tiếp tục với action khác
+            case 'ADD_PRODUCT': { // Bọc case bằng {}
+              // Khi đồng bộ ADD_PRODUCT, chúng ta cần gửi dữ liệu gốc (action.data)
+              // và sau đó cập nhật item offline trong store với dữ liệu từ server (bao gồm ID thật)
+              const addedProduct = await InventoryItemService.createInventoryItem(token, action.data);
+              // Xóa item offline tạm thời và thêm item từ server
+              this.products = this.products.filter(p => !(p.isOffline && p.name === action.data.name) ); // Cần cơ chế xác định item offline tốt hơn
+              this.products.unshift(addedProduct);
+              break;
+            }
+            case 'UPDATE_PRODUCT': { // Bọc case bằng {}
+              await InventoryItemService.updateInventoryItem(token, action.data);
+              // Sau khi update thành công, item trong this.products đã được cập nhật ở bước trước (khi offline)
+              // hoặc sẽ được cập nhật bởi fetchProducts nếu cần.
+              // Để đảm bảo, có thể tìm và cập nhật lại item đó từ action.data nếu cần.
+              // action.data.id ở đây cũng nên là inventory_item_id
+              const idx = this.products.findIndex(p => String(p.inventory_item_id) === String(action.data.id));
+              if (idx !== -1) {
+                this.products[idx] = { ...this.products[idx], ...action.data };
               }
-              await InventoryItemService.updateInventoryItem(token, action.data.id, action.data);
               break;
             }
           }
-          await indexedDBService.removePendingAction(action.id)
+          await indexedDBService.removePendingAction(action.id);
         } catch (error) {
           console.error('Error syncing action:', action, error);
-          // Thêm thông báo lỗi chi tiết hơn nếu có từ server
           const errorMessage = error.response?.data?.message || error.message;
           Notify.create({
             type: 'negative',
-            message: `Lỗi đồng bộ: ${errorMessage}`
+            message: `Lỗi đồng bộ ${action.type} (${action.data.name || action.data.id}): ${errorMessage}`
           });
+          // Không dừng lại nếu một action lỗi, tiếp tục với các action khác
         }
       }
-
-      // Refresh products sau khi sync
-      await this.fetchProducts()
+      
+      Notify.create({ type: 'positive', message: 'Đồng bộ hoàn tất.' });
+      // Refresh products sau khi sync để đảm bảo dữ liệu mới nhất từ server
+      await this.fetchProducts();
+      await indexedDBService.saveProducts(this.products); // Lưu lại sau khi fetch
     }
   }
 })

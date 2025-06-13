@@ -13,7 +13,8 @@ export default defineConfig((/* ctx */) => {
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
     boot: [
       'pinia',
-      'axios'
+      'axios',
+      'numpad-directive' // Thêm boot file cho numpad directive
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
@@ -164,14 +165,14 @@ export default defineConfig((/* ctx */) => {
       // serviceWorker: 'src-pwa/custom-service-worker.js', // Kiểm tra tài liệu Quasar cho tên thuộc tính chính xác
                                                         // Thông thường Quasar tự phát hiện nếu file tồn tại ở src-pwa
       extendManifestJson (json) {
-        json.name = 'Sale PWA'
-        json.short_name = 'SalePWA'
-        json.description = 'Ứng dụng PWA bán hàng'
+        json.name = 'MISA Eshop'
+        json.short_name = 'eshop'
+        json.description = 'Ứng dụng quản lý cửa hàng'
         json.display = 'standalone'
         json.orientation = 'portrait'
         json.background_color = '#ffffff'
         json.theme_color = '#027be3'
-        json.categories = ['shopping', 'business']
+        json.categories = ['shopping', 'business',"retail"]
         json.start_url = '/'
         json.scope = '/'
         // Thêm gcm_sender_id để tương thích tốt hơn
