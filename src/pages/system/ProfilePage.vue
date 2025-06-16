@@ -162,11 +162,13 @@
 import { ref, onMounted, computed, onUnmounted } from 'vue' // Thêm ref, onMounted, computed, onUnmounted
 import { useRouter } from 'vue-router' // Thêm useRouter
 import { useCartStore } from 'src/stores/cart'
-import { Dialog, useQuasar } from 'quasar' // Thêm useQuasar
+import { Dialog } from 'quasar' // Thêm useQuasar, không cần $q nữa
+import { showNotification } from 'src/boot/notify-service'
+
 
 const cartStore = useCartStore()
 const router = useRouter() // Khởi tạo router
-const $q = useQuasar() // Khởi tạo Quasar
+// const $q = useQuasar() // Không cần dùng $q.notify nữa
 
 // Trạng thái đăng nhập
 const authToken = ref(localStorage.getItem('authToken'))
@@ -209,12 +211,7 @@ const handleLogout = () => {
   // (Tùy chọn) Reset user store nếu có
   // Ví dụ: userStore.clearUser() // Giả sử có userStore
 
-  $q.notify({
-    type: 'positive',
-    message: 'Đăng xuất thành công!',
-    icon: 'check_circle',
-    position: 'top'
-  })
+  showNotification('success', 'Đăng xuất thành công!')
   router.push('/login')
 }
 

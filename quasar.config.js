@@ -14,7 +14,8 @@ export default defineConfig((/* ctx */) => {
     boot: [
       'pinia',
       'axios',
-      'numpad-directive' // Thêm boot file cho numpad directive
+      'numpad-directive', // Thêm boot file cho numpad directive
+      'notify-service'
     ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css

@@ -69,12 +69,13 @@
 <script setup>
 import { ref, onMounted } from 'vue' // Xóa 'computed'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'
+// import { useQuasar } from 'quasar' // Không cần dùng $q.notify nữa
 import { useProductStore } from '../../stores/product'
 import { InventoryItemService } from 'src/services/InventoryItemService' // Thêm import
 import { EDIT_MODE } from 'src/constants'
+import { showNotification } from 'src/boot/notify-service'
 
-const $q = useQuasar()
+// const $q = useQuasar() // Không cần dùng $q.notify nữa
 const route = useRoute()
 const router = useRouter()
 const productStore = useProductStore()
@@ -92,7 +93,7 @@ const form = ref({
 onMounted(async () => {
   const productId = route.params.id // ID từ route có thể là string
   if (!productId) {
-    $q.notify({ type: 'negative', message: 'Không tìm thấy ID sản phẩm.' })
+    showNotification('error', 'Không tìm thấy ID sản phẩm.')
     router.push('/') // Hoặc một trang lỗi/danh sách sản phẩm
     return
   } 
@@ -100,7 +101,7 @@ onMounted(async () => {
   try {
     const token = localStorage.getItem('authToken')
     if (!token) {
-      $q.notify({ type: 'negative', message: 'Vui lòng đăng nhập để chỉnh sửa sản phẩm.' })
+      showNotification('error', 'Vui lòng đăng nhập để chỉnh sửa sản phẩm.')
       router.push('/login') // Chuyển hướng đến trang đăng nhập nếu không có token
       return
     }
@@ -113,12 +114,12 @@ onMounted(async () => {
       productData.State=EDIT_MODE.Edit;//Editmode
       form.value = productData;
     } else {
-      $q.notify({ type: 'negative', message: 'Không tìm thấy thông tin sản phẩm.' })
+      showNotification('error', 'Không tìm thấy thông tin sản phẩm.')
       router.push('/') // Hoặc trang danh sách sản phẩm
     }
   } catch (error) {
     console.error('Lỗi khi tải thông tin sản phẩm:', error)
-    $q.notify({ type: 'negative', message: 'Lỗi khi tải thông tin sản phẩm. Vui lòng thử lại.' })
+    showNotification('error', 'Lỗi khi tải thông tin sản phẩm. Vui lòng thử lại.')
     router.push('/') // Hoặc trang danh sách sản phẩm
   }
 })
@@ -135,29 +136,20 @@ async function onSubmit() {
       })
       localStorage.setItem('pendingProductUpdates', JSON.stringify(pendingUpdates))
       
-      $q.notify({
-        type: 'info',
-        message: 'Đã lưu thay đổi vào bộ nhớ tạm. Sẽ đồng bộ khi có kết nối mạng.'
-      })
+      showNotification('info', 'Đã lưu thay đổi vào bộ nhớ tạm. Sẽ đồng bộ khi có kết nối mạng.')
     } else {
       // Nếu có kết nối, cập nhật trực tiếp
       await productStore.updateProduct({
         id: route.params.id,
         ...form.value
       })
-      $q.notify({
-        type: 'positive',
-        message: 'Cập nhật sản phẩm thành công'
-      })
+      showNotification('success', 'Cập nhật sản phẩm thành công')
     }
     
     router.push({ name: 'products', query: { updatedProductId: route.params.id } })
   } catch (error) { // ESLint: 'error' is defined but never used - Sửa: Thêm console.error
     console.error('Lỗi khi cập nhật sản phẩm:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Có lỗi xảy ra khi cập nhật sản phẩm'
-    })
+    showNotification('error', 'Có lỗi xảy ra khi cập nhật sản phẩm')
   }
 }
 
@@ -170,16 +162,10 @@ window.addEventListener('online', async () => {
         await productStore.updateProduct(update)
       }
       localStorage.removeItem('pendingProductUpdates')
-      $q.notify({
-        type: 'positive',
-        message: 'Đã đồng bộ thành công các thay đổi'
-      })
+      showNotification('success', 'Đã đồng bộ thành công các thay đổi')
     } catch (error) { // ESLint: 'error' is defined but never used - Sửa: Thêm console.error
       console.error('Lỗi khi đồng bộ dữ liệu:', error)
-      $q.notify({
-        type: 'negative',
-        message: 'Có lỗi xảy ra khi đồng bộ dữ liệu'
-      })
+      showNotification('error', 'Có lỗi xảy ra khi đồng bộ dữ liệu')
     }
   }
 })

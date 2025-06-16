@@ -1,9 +1,10 @@
 import { ref } from 'vue';
-import { useQuasar } from 'quasar';
+// import { useQuasar } from 'quasar'; // Không cần dùng $q.notify nữa
+import { showNotification } from 'src/boot/notify-service';
 
 export function useCrud(apiService, entityName = 'mục') {
-  const $q = useQuasar();
-  
+  // const $q = useQuasar(); // Không cần dùng $q.notify nữa
+
   const items = ref([]);
   const currentItem = ref(null);
   const loading = ref(false);
@@ -28,7 +29,7 @@ export function useCrud(apiService, entityName = 'mục') {
       items.value = result; 
     } catch (e) {
       error.value = e.message;
-      $q.notify({ type: 'negative', message: `Lỗi khi tải danh sách ${entityName}: ${e.message}` });
+      showNotification('error', `Lỗi khi tải danh sách ${entityName}: ${e.message}`);
       items.value = []; // Đảm bảo items là mảng rỗng khi có lỗi
     } finally {
       loading.value = false;
@@ -50,7 +51,7 @@ export function useCrud(apiService, entityName = 'mục') {
       return result;
     } catch (e) {
       error.value = e.message;
-      $q.notify({ type: 'negative', message: `Lỗi khi tải chi tiết ${entityName} (ID: ${id}): ${e.message}` });
+      showNotification('error', `Lỗi khi tải chi tiết ${entityName} (ID: ${id}): ${e.message}`);
     } finally {
       loadingItem.value = false;
     }
@@ -66,13 +67,13 @@ export function useCrud(apiService, entityName = 'mục') {
       }
       // Giả sử apiService có phương thức createItem(token, data) hoặc createInventoryItem(token, data)
       const newItem = await apiService.createInventoryItem(token, data); // Sử dụng createInventoryItem
-      $q.notify({ type: 'positive', message: `Thêm ${entityName} thành công!` });
+      showNotification('success', `Thêm ${entityName} thành công!`);
       // Tùy chọn: làm mới danh sách hoặc thêm item mới vào items.value
       // await fetchAll(); // Hoặc items.value.unshift(newItem);
       return newItem;
     } catch (e) {
       error.value = e.message;
-      $q.notify({ type: 'negative', message: `Lỗi khi thêm ${entityName}: ${e.message}` });
+      showNotification('error', `Lỗi khi thêm ${entityName}: ${e.message}`);
       throw e; // Ném lỗi để component cha có thể xử lý nếu cần
     } finally {
       loadingItem.value = false;
@@ -92,7 +93,7 @@ export function useCrud(apiService, entityName = 'mục') {
       // InventoryItemService.updateInventoryItem(token, payload) - payload nên là object hoàn chỉnh
       const payload = { ...data, id: id }; // Giả sử API cần id trong payload
       const updatedItem = await apiService.updateInventoryItem(token, payload);
-      $q.notify({ type: 'positive', message: `Cập nhật ${entityName} thành công!` });
+      showNotification('success', `Cập nhật ${entityName} thành công!`);
       
       // Cập nhật item trong danh sách items.value
       const index = items.value.findIndex(item => String(item.inventory_item_id) === String(id)); // Giả sử ID là inventory_item_id
@@ -105,7 +106,7 @@ export function useCrud(apiService, entityName = 'mục') {
       return updatedItem;
     } catch (e) {
       error.value = e.message;
-      $q.notify({ type: 'negative', message: `Lỗi khi cập nhật ${entityName}: ${e.message}` });
+      showNotification('error', `Lỗi khi cập nhật ${entityName}: ${e.message}`);
       throw e;
     } finally {
       loadingItem.value = false;
@@ -122,7 +123,7 @@ export function useCrud(apiService, entityName = 'mục') {
       }
       // Giả sử apiService có phương thức deleteItem(token, id) hoặc deleteInventoryItem(token, id)
       await apiService.deleteInventoryItem(token, id); // Giả sử có hàm này
-      $q.notify({ type: 'positive', message: `Xóa ${entityName} thành công!` });
+      showNotification('success', `Xóa ${entityName} thành công!`);
       
       // Xóa item khỏi danh sách items.value
       items.value = items.value.filter(item => String(item.inventory_item_id) !== String(id));
@@ -131,7 +132,7 @@ export function useCrud(apiService, entityName = 'mục') {
       }
     } catch (e) {
       error.value = e.message;
-      $q.notify({ type: 'negative', message: `Lỗi khi xóa ${entityName}: ${e.message}` });
+      showNotification('error', `Lỗi khi xóa ${entityName}: ${e.message}`);
       throw e;
     } finally {
       loadingItem.value = false;

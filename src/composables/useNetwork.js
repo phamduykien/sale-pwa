@@ -1,12 +1,13 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useQuasar } from 'quasar'
+// import { useQuasar } from 'quasar' // Không cần dùng $q.notify nữa
+import { showNotification } from 'src/boot/notify-service'
 
 /**
  * Composable để quản lý trạng thái kết nối mạng
  * @returns {{isOnline: Ref<boolean>, showOfflineIndicator: Ref<boolean>}}
  */
 export function useNetwork() {
-  const $q = useQuasar()
+  // const $q = useQuasar() // Không cần dùng $q.notify nữa
   const isOnline = ref(navigator.onLine)
   const showOfflineIndicator = ref(false)
 
@@ -16,12 +17,11 @@ export function useNetwork() {
 
     // Chỉ hiển thị thông báo khi có sự thay đổi trạng thái
     if (prevStatus !== isOnline.value) {
-      $q.notify({
-        type: isOnline.value ? 'positive' : 'warning',
-        message: isOnline.value ? 'Đã kết nối lại mạng' : 'Mất kết nối mạng',
-        position: 'top',
-        timeout: 2000
-      })
+      showNotification(
+        isOnline.value ? 'success' : 'warning',
+        isOnline.value ? 'Đã kết nối lại mạng' : 'Mất kết nối mạng',
+        { position: 'top', timeout: 2000 }
+      )
     }
 
     // Hiển thị indicator khi offline

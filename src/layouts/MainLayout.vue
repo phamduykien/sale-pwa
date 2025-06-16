@@ -124,10 +124,11 @@ import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCartStore } from 'src/stores/cart'
 import { useProductStore } from 'src/stores/product'
-import { useQuasar } from 'quasar'
+// import { useQuasar } from 'quasar' // Không cần dùng $q.notify nữa
 import { useNetwork } from 'src/composables/useNetwork'
+import { showNotification } from 'src/boot/notify-service'
 
-const $q = useQuasar()
+// const $q = useQuasar() // Không cần dùng $q.notify nữa
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
@@ -222,24 +223,24 @@ function urlBase64ToUint8Array(base64String) {
 
 async function requestNotificationPermission() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    $q.notify({ type: 'negative', message: 'Trình duyệt này không hỗ trợ thông báo hoặc Service Worker.' });
+    showNotification('error', 'Trình duyệt này không hỗ trợ thông báo hoặc Service Worker.');
     return;
   }
 
   const permissionResult = await Notification.requestPermission();
   if (permissionResult === 'granted') {
-    $q.notify({ type: 'positive', message: 'Đã cấp quyền thông báo!' });
+    showNotification('success', 'Đã cấp quyền thông báo!');
     subscribeUserToPush();
   } else if (permissionResult === 'denied') {
-    $q.notify({ type: 'warning', message: 'Quyền thông báo đã bị từ chối.' });
+    showNotification('warning', 'Quyền thông báo đã bị từ chối.');
   } else {
-    $q.notify({ type: 'info', message: 'Quyền thông báo chưa được quyết định.' });
+    showNotification('info', 'Quyền thông báo chưa được quyết định.');
   }
 }
 
 async function subscribeUserToPush() {
   if (!('serviceWorker' in navigator) || !navigator.serviceWorker.ready) {
-     $q.notify({ type: 'warning', message: 'Service Worker chưa sẵn sàng.' });
+     showNotification('warning', 'Service Worker chưa sẵn sàng.');
     return;
   }
   
@@ -250,7 +251,7 @@ async function subscribeUserToPush() {
     if (subscription) {
       console.log('User IS already subscribed.');
       console.log('Existing subscription:', JSON.stringify(subscription));
-      $q.notify({ type: 'info', message: 'Đã đăng ký nhận thông báo từ trước.' });
+      showNotification('info', 'Đã đăng ký nhận thông báo từ trước.');
       return;
     }
 
@@ -260,7 +261,7 @@ async function subscribeUserToPush() {
     });
 
     console.log('User is subscribed:', JSON.stringify(subscription));
-    $q.notify({ type: 'positive', message: 'Đăng ký nhận thông báo thành công!' });
+    showNotification('success', 'Đăng ký nhận thông báo thành công!');
 
     // TODO: Send the subscription object to your server
     // Ví dụ:
@@ -274,21 +275,21 @@ async function subscribeUserToPush() {
   } catch (error) {
     console.error('Failed to subscribe the user: ', error);
     if (Notification.permission === 'denied') {
-      $q.notify({ type: 'negative', message: 'Quyền thông báo bị từ chối. Không thể đăng ký.' });
+      showNotification('error', 'Quyền thông báo bị từ chối. Không thể đăng ký.');
     } else {
-      $q.notify({ type: 'negative', message: `Đăng ký nhận thông báo thất bại: ${error.message}` });
+      showNotification('error', `Đăng ký nhận thông báo thất bại: ${error.message}`);
     }
   }
 }
 
 function testLocalNotification() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-    $q.notify({ type: 'negative', message: 'Thông báo hoặc Service Worker không được hỗ trợ.' });
+    showNotification('error', 'Thông báo hoặc Service Worker không được hỗ trợ.');
     return;
   }
 
   if (Notification.permission !== 'granted') {
-    $q.notify({ type: 'warning', message: 'Vui lòng cấp quyền thông báo trước.' });
+    showNotification('warning', 'Vui lòng cấp quyền thông báo trước.');
     requestNotificationPermission(); // Thử yêu cầu lại quyền
     return;
   }
@@ -302,10 +303,10 @@ function testLocalNotification() {
       tag: 'test-notification', // Tag giúp gom nhóm thông báo
       data: { url: window.location.origin } // Dữ liệu kèm theo, ví dụ URL để mở khi click
     });
-    $q.notify({ type: 'info', message: 'Đã gửi thông báo local. Kiểm tra thông báo của hệ thống.' });
+    showNotification('info', 'Đã gửi thông báo local. Kiểm tra thông báo của hệ thống.');
   }).catch(err => {
     console.error('Service Worker not ready or error showing notification:', err);
-    $q.notify({ type: 'negative', message: 'Không thể hiển thị thông báo local.' });
+    showNotification('error', 'Không thể hiển thị thông báo local.');
   });
 }
 </script>

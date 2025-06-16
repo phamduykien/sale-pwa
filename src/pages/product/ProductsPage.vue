@@ -74,8 +74,10 @@
 
 <script setup>
 import { ref, onMounted, onActivated, defineOptions } from 'vue' // Removed 'watch', 'computed'
-import { useQuasar } from 'quasar'
+// import { useQuasar } from 'quasar' // Không cần dùng $q.notify nữa
+import { useQuasar } from 'quasar' // $q vẫn được dùng cho Dialog
 import { useRoute, useRouter } from 'vue-router'
+import { showNotification } from 'src/boot/notify-service'
 import { useProductStore } from 'src/stores/product'
 import ProductList from 'src/components/ProductList.vue'
 import { InventoryItemService } from 'src/services/InventoryItemService';
@@ -288,11 +290,7 @@ const handleEditItem = (item) => {
     router.push(`/product/${item.inventory_item_id}`)
   } else {
     console.error('Không thể chỉnh sửa: ID hàng hóa không hợp lệ.', item)
-    $q.notify({
-      color: 'negative',
-      icon: 'error',
-      message: 'Không thể mở trang chỉnh sửa, ID hàng hóa không tồn tại.'
-    })
+    showNotification('error', 'Không thể mở trang chỉnh sửa, ID hàng hóa không tồn tại.')
   }
 }
 
@@ -321,18 +319,10 @@ const handleDeleteItem = (item) => {
       inventoryItemList.value = inventoryItemList.value.filter(
         (i) => i.inventory_item_id !== item.inventory_item_id
       );
-      $q.notify({
-        color: 'positive',
-        icon: 'delete_forever',
-        message: `Đã xóa: ${item.inventory_item_name}`
-      })
+      showNotification('success', `Đã xóa: ${item.inventory_item_name}`)
     } catch (error) {
       console.error('Lỗi khi xóa sản phẩm:', error);
-      $q.notify({
-        color: 'negative',
-        icon: 'error',
-        message: 'Xóa sản phẩm thất bại. Vui lòng thử lại.'
-      })
+      showNotification('error', 'Xóa sản phẩm thất bại. Vui lòng thử lại.')
     }
   })
 }
