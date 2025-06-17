@@ -44,7 +44,7 @@ export default defineConfig((/* ctx */) => {
         node: 'node20'
       },
 
-      vueRouterMode: 'hash', // available values: 'hash', 'history'
+      vueRouterMode: 'hash', // Trả lại hash mode
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,

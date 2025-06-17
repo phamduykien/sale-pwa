@@ -26,5 +26,23 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE)
   })
 
+  Router.beforeEach((to, from, next) => {
+    const isAuthenticated = !!localStorage.getItem('authToken');
+    const requiresAuth = to.matched.some(record => record.meta.requiresAuth !== false && to.path !== '/login'); // Mặc định yêu cầu auth trừ khi meta.requiresAuth = false hoặc là trang login
+    const isLoginPage = to.path === '/login';
+
+    if (requiresAuth && !isAuthenticated) {
+      // Nếu route yêu cầu xác thực và người dùng chưa đăng nhập, chuyển đến trang login
+      // Thêm query `redirect` để sau khi đăng nhập có thể quay lại trang trước đó
+      next({ path: '/login', query: { redirect: to.fullPath } });
+    } else if (isLoginPage && isAuthenticated) {
+      // Nếu người dùng đã đăng nhập và cố gắng vào trang login, chuyển đến trang chủ
+      next('/');
+    } else {
+      // Cho phép điều hướng
+      next();
+    }
+  });
+
   return Router
 })

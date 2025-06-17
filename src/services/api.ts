@@ -1,54 +1,22 @@
 import { DashboardData } from '../types/statistics'
 import { mockDashboardData } from '../mocks/dashboard'
-import axios from 'axios';
+// Import a configured axios instance from boot file
+import { api } from 'src/boot/axios'
 
-let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-const api = axios.create({
-  baseURL: '/',
-});
-
-async function fetchConfig() {
-  try {
-    let response;
-    if (import.meta.env.PROD) {
-      // Fetch from backend in production
-      response = await fetch('/api/config'); // Replace with your actual backend endpoint
-    } else {
-      // Fetch from local file in development
-      response = await fetch('/config.json');
-    }
-    const config = await response.json();
-    API_URL = config.apiUrl;
-  } catch (error) {
-    console.error('Error fetching config:', error);
-  }
-}
-
-// Call fetchConfig to initialize API_URL
-fetchConfig();
-
-// Add a request interceptor to include the token
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken');
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
+// API_URL, fetchConfig, và instance axios cục bộ sẽ bị loại bỏ
+// vì chúng ta sẽ sử dụng instance `api` đã được cấu hình toàn cục
+// với baseURL và interceptor từ src/boot/axios.js.
 
 export class ApiService {
   static async getDashboardData(): Promise<DashboardData> {
     try {
-      // Trong môi trường production, sẽ gọi API thực tế
+      // Trong môi trường production, sẽ gọi API thực tế bằng instance `api`
       if (import.meta.env.PROD) {
-        const response = await fetch(`${API_URL}/dashboard`)
-        if (!response.ok) {
-          throw new Error('Failed to fetch dashboard data')
-        }
-        return response.json()
+        // Sử dụng instance `api` từ boot/axios.js
+        // Endpoint '/dashboard' sẽ được nối với baseURL đã cấu hình trong boot/axios.js
+        const response = await api.get('/dashboard')
+        // axios trả về dữ liệu trong response.data
+        return response.data 
       }
       
       // Trong môi trường development, sử dụng mock data
@@ -59,6 +27,7 @@ export class ApiService {
       })
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      // Nếu lỗi từ axios, error.response có thể chứa thêm thông tin
       throw error
     }
   }

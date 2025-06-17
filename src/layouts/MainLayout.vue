@@ -151,12 +151,13 @@ onMounted(() => {
   cartStore.loadCartFromStorage();
   updateActiveTab();
 
-  if (route.path !== '/login') {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      router.push('/login');
-    }
-  }
+  // Logic kiểm tra token và chuyển hướng đã được xử lý bởi navigation guard trong src/router/index.js
+  // if (route.path !== '/login') {
+  //   const token = localStorage.getItem('auth_token');
+  //   if (!token) {
+  //     router.push('/login');
+  //   }
+  // }
   // Hướng dẫn test push từ DevTools
   console.log("Để giả lập Push Event từ server, mở Chrome DevTools > Application > Service Workers, tìm service worker của trang này, và sử dụng ô 'Push'.");
   console.log("Payload ví dụ: {\"title\": \"Test Push\", \"body\": \"Đây là push từ DevTools!\", \"icon\": \"/icons/favicon-128x128.png\"}");

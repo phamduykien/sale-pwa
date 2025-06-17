@@ -97,13 +97,7 @@ const hasMore = ref(true)
 const initialLoadDone = ref(false) // Thêm cờ theo dõi tải lần đầu
 
 
-// const sortOptions = [
-//   { label: 'Tên A-Z', value: 'name' },
-//   { label: 'Giá thấp đến cao', value: 'price_asc' },
-//   { label: 'Giá cao đến thấp', value: 'price_desc' },
-//   { label: 'Đánh giá cao nhất', value: 'rating' },
-//   { label: 'Mới nhất', value: 'newest' }
-// ]
+
 
 // const filteredProducts = computed(() => { // Không còn dùng filteredProducts theo cách cũ
 //   return productStore.products
@@ -231,16 +225,18 @@ const loadMoreItems = async (index, done) => {
 
   isLoadingMore.value = true;
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      console.error('Không tìm thấy token xác thực cho loadMoreItems.');
-      hasMore.value = false; // Không có token, không thể tải thêm
-      callback(true);
-      return;
-    }
+    // Token sẽ được tự động thêm bởi interceptor
+    // const token = localStorage.getItem('authToken');
+    // if (!token) {
+    //   console.error('Không tìm thấy token xác thực cho loadMoreItems.');
+    //   hasMore.value = false; // Không có token, không thể tải thêm
+    //   callback(true);
+    //   return;
+    // }
 
     // skip.value được cập nhật từ initializeData hoặc các lần loadMoreItems trước
-    const newItems = await InventoryItemService.getInventoryItems(token, skip.value, take.value);
+    // Bỏ tham số token
+    const newItems = await InventoryItemService.getInventoryItems(skip.value, take.value);
 
     if (newItems && newItems.length > 0) {
       inventoryItemList.value.push(...newItems);
@@ -312,8 +308,8 @@ const handleDeleteItem = (item) => {
     }
   }).onOk(async () => {
     try {
-      // Gọi API xóa ở đây nếu cần
-      // await InventoryItemService.deleteInventoryItem(item.inventory_item_id, localStorage.getItem('token'));
+      // Gọi API xóa ở đây nếu cần, không cần truyền token
+      // await InventoryItemService.deleteInventoryItem(item.inventory_item_id);
       
       // Xóa item khỏi danh sách local
       inventoryItemList.value = inventoryItemList.value.filter(

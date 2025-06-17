@@ -62,12 +62,13 @@ export const useProductStore = defineStore('product', {
         }
 
         // Nếu online, gọi API và lưu vào IndexedDB
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          throw new Error('Token xác thực không tìm thấy.');
-        }
+        // Token sẽ được tự động thêm bởi interceptor
+        // const token = localStorage.getItem('authToken');
+        // if (!token) {
+        //   throw new Error('Token xác thực không tìm thấy.');
+        // }
 
-        const apiProducts = await InventoryItemService.getInventoryItems(token, 0, 50);
+        const apiProducts = await InventoryItemService.getInventoryItems(0, 50); // Bỏ token
 
         if (apiProducts && Array.isArray(apiProducts)) {
           this.products = apiProducts;
@@ -160,12 +161,13 @@ export const useProductStore = defineStore('product', {
             return productToReturn; // Trả về null vì không có gì để cập nhật trên server
         }
         
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          throw new Error('Token xác thực không tìm thấy.');
-        }
+        // Token sẽ được tự động thêm bởi interceptor
+        // const token = localStorage.getItem('authToken');
+        // if (!token) {
+        //   throw new Error('Token xác thực không tìm thấy.');
+        // }
         
-        const updatedProductFromServer = await InventoryItemService.updateInventoryItem(token, productData);
+        const updatedProductFromServer = await InventoryItemService.updateInventoryItem(productData); // Bỏ token
 
         // Tìm lại index phòng trường hợp ID từ server có thể khác (mặc dù thường là giống)
         // Giả sử updatedProductFromServer cũng có trường inventory_item_id hoặc một trường ID tương đương
@@ -257,14 +259,15 @@ export const useProductStore = defineStore('product', {
         }
 
         // Online: gửi lên server
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          throw new Error('Token xác thực không tìm thấy.');
-        }
+        // Token sẽ được tự động thêm bởi interceptor
+        // const token = localStorage.getItem('authToken');
+        // if (!token) {
+        //   throw new Error('Token xác thực không tìm thấy.');
+        // }
         // InventoryItemService.createInventoryItem nên nhận object, không phải FormData nếu API backend mong đợi JSON
         // Nếu API nhận FormData, thì giữ nguyên productData
         // Giả sử InventoryItemService.createInventoryItem nhận object:
-        const serverProduct = await InventoryItemService.createInventoryItem(token, newProduct);
+        const serverProduct = await InventoryItemService.createInventoryItem(newProduct); // Bỏ token
         
         this.products.unshift(serverProduct); // Thêm sản phẩm từ server vào đầu danh sách
         await indexedDBService.saveProducts(this.products); // Lưu lại toàn bộ danh sách
@@ -291,11 +294,12 @@ export const useProductStore = defineStore('product', {
 
       Notify.create({ type: 'info', message: `Đang đồng bộ ${pendingActions.length} thay đổi...` });
 
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        Notify.create({ type: 'negative', message: 'Lỗi đồng bộ: Token không tìm thấy.' });
-        return;
-      }
+      // Token sẽ được tự động thêm bởi interceptor, không cần kiểm tra ở đây nữa
+      // const token = localStorage.getItem('authToken');
+      // if (!token) {
+      //   Notify.create({ type: 'negative', message: 'Lỗi đồng bộ: Token không tìm thấy.' });
+      //   return;
+      // }
 
       for (const action of pendingActions) {
         try {
@@ -303,14 +307,14 @@ export const useProductStore = defineStore('product', {
             case 'ADD_PRODUCT': { // Bọc case bằng {}
               // Khi đồng bộ ADD_PRODUCT, chúng ta cần gửi dữ liệu gốc (action.data)
               // và sau đó cập nhật item offline trong store với dữ liệu từ server (bao gồm ID thật)
-              const addedProduct = await InventoryItemService.createInventoryItem(token, action.data);
+              const addedProduct = await InventoryItemService.createInventoryItem(action.data); // Bỏ token
               // Xóa item offline tạm thời và thêm item từ server
               this.products = this.products.filter(p => !(p.isOffline && p.name === action.data.name) ); // Cần cơ chế xác định item offline tốt hơn
               this.products.unshift(addedProduct);
               break;
             }
             case 'UPDATE_PRODUCT': { // Bọc case bằng {}
-              await InventoryItemService.updateInventoryItem(token, action.data);
+              await InventoryItemService.updateInventoryItem(action.data); // Bỏ token
               // Sau khi update thành công, item trong this.products đã được cập nhật ở bước trước (khi offline)
               // hoặc sẽ được cập nhật bởi fetchProducts nếu cần.
               // Để đảm bảo, có thể tìm và cập nhật lại item đó từ action.data nếu cần.

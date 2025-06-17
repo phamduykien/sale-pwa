@@ -43,8 +43,10 @@
 
 <script>
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import axios, { HttpStatusCode } from 'axios';
+import { useRouter, useRoute } from 'vue-router'; // Thêm useRoute
+// import axios, { HttpStatusCode } from 'axios'; // Sử dụng instance api từ boot
+import { api } from 'src/boot/axios'; // Import instance api
+import { HttpStatusCode } from 'axios'; // HttpStatusCode vẫn có thể cần thiết
 
 export default {
   setup() {
@@ -52,6 +54,7 @@ export default {
     const loginResponse = ref(null);
     const password = ref('');
     const router = useRouter();
+    const route = useRoute(); // Khởi tạo route
     const showOtpInput = ref(false);
     const otp = ref('');
     const tenants = ref([]);
@@ -61,7 +64,7 @@ export default {
     const login = async () => {
       try {
 
-        const response = await axios.post(
+        const response = await api.post( // Sử dụng api instance
           '/api/oauth/oauthmobile/login',
           {
             UserName: username.value,
@@ -110,7 +113,7 @@ export default {
 
     const loginTwoFactor = async () => {
       try {
-        const response = await axios.post(
+        const response = await api.post( // Sử dụng api instance
           '/api/oauth/oauthmobile/login-twofactor',
           {
             Username: username.value,
@@ -161,9 +164,12 @@ export default {
         const currentTenant = selectedTenant.value;
         const env = currentTenant.env;
         const tenantId = currentTenant.tenant_id;
-        const response = await axios.get(
+        const response = await api.get( // Sử dụng api instance
           `/${env}/api/authmob/Authens/login/${tenantId}?keyCacheMID=${loginResponse.value.KeyCacheMID}`,
           {
+            // headers sẽ được tự động quản lý bởi interceptor của api instance nếu cần
+            // Tuy nhiên, nếu các headers này là đặc thù cho request này và không phải là Authorization,
+            // thì vẫn giữ lại chúng. Interceptor sẽ chỉ thêm Authorization.
             headers: {
               'Content-Type': 'application/json',
               'x-ms-bid': '',
@@ -177,8 +183,9 @@ export default {
         if (response.status === HttpStatusCode.Ok) {
           // Store the authentication token
           localStorage.setItem('authToken', response.data.token);
-          // Redirect to the next page
-          router.push('/');
+          // Redirect to the original intended page or to home
+          const redirectPath = route.query.redirect || '/';
+          router.push(redirectPath);
         } else {
           console.error('Failed to get auth token:', response.data);
           alert('Failed to get auth token');
@@ -188,14 +195,6 @@ export default {
         alert('Failed to get auth token');
       }
     };
-
-    onMounted(() => {
-      // Check if there's an auth token
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        router.push('/'); // Redirect if already logged in
-      }
-    });
 
     return {
       username,

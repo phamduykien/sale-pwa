@@ -99,14 +99,16 @@ onMounted(async () => {
   } 
 
   try {
-    const token = localStorage.getItem('authToken')
-    if (!token) {
-      showNotification('error', 'Vui lòng đăng nhập để chỉnh sửa sản phẩm.')
-      router.push('/login') // Chuyển hướng đến trang đăng nhập nếu không có token
-      return
-    }
+    // Token sẽ được tự động thêm bởi interceptor, không cần kiểm tra và truyền thủ công ở đây nữa
+    // const token = localStorage.getItem('authToken')
+    // if (!token) {
+    //   showNotification('error', 'Vui lòng đăng nhập để chỉnh sửa sản phẩm.')
+    //   router.push('/login') // Chuyển hướng đến trang đăng nhập nếu không có token
+    //   return
+    // }
 
-    const productData = await InventoryItemService.getInventoryItem(token, productId)
+    // Gọi service mà không cần truyền token
+    const productData = await InventoryItemService.getInventoryItem(productId)
     // debugger // Xóa dòng này
     if (productData) {
       // Ánh xạ dữ liệu từ API vào form

@@ -3,25 +3,36 @@
     <q-slide-item
       v-for="item in items"
       :key="item.inventory_item_id"
-      right-color="primary"
-      @right="({ reset }) => onEdit(item, reset)"
-      left-color="negative"
-      @left="({ reset }) => onDelete(item, reset)"
+      right-color="grey-2"
+      @left="() => handleSlideInteraction(item.inventory_item_id)" 
+      @right="() => handleSlideInteraction(item.inventory_item_id)"
+      @slide="(details) => handleSlide(details, item.inventory_item_id)"
     >
       <template v-slot:right>
-        <q-item-section avatar class="q-pa-sm cursor-pointer" @click.stop>
-          <q-icon name="edit" color="white" />
-          <div class="text-caption text-white">Sửa</div>
-        </q-item-section>
+        <div class="row items-center no-wrap q-pa-xs full-height">
+          <q-btn 
+            icon="delete" 
+            label="Xóa" 
+            color="negative" 
+            flat 
+            dense 
+            no-caps
+            class="q-mr-xs"
+            @click="() => onDelete(item, getResetFnForItem(item.inventory_item_id))" 
+          />
+          <q-btn 
+            icon="edit" 
+            label="Sửa" 
+            color="primary" 
+            flat 
+            dense 
+            no-caps
+            @click="() => onEdit(item, getResetFnForItem(item.inventory_item_id))" 
+          />
+        </div>
       </template>
-      <template v-slot:left>
-        <q-item-section avatar class="q-pa-sm cursor-pointer" @click.stop>
-          <q-icon name="delete" color="white" />
-           <div class="text-caption text-white">Xóa</div>
-        </q-item-section>
-      </template>
-
-      <q-item clickable v-ripple>
+      
+      <q-item clickable v-ripple :ref="el => itemRefs[item.inventory_item_id] = el">
         <q-item-section avatar>
           <q-avatar rounded>
             <img
@@ -47,7 +58,7 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue';
+import { defineComponent, ref } from 'vue'; // Thêm ref vào đây
 
 export default defineComponent({
   name: 'ProductList',
@@ -59,19 +70,69 @@ export default defineComponent({
   },
   emits: ['edit-item', 'delete-item'],
   setup(props, { emit }) {
+    const itemRefs = ref({}); 
+    const openedSlideItemId = ref(null); // ID của item đang mở
+
     const formatPrice = (price) => {
       if (price === null || price === undefined) return 'N/A';
       return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
-    const onEdit = (item, reset) => {
-      emit('edit-item', item);
-      reset(); // Reset the slide item state
+    // Hàm để lấy hàm reset của QSlideItem tương ứng
+    // QSlideItem không trực tiếp cung cấp hàm reset qua ref,
+    // nhưng chúng ta có thể tìm component cha QSlideItem từ QItem.
+    const getResetFnForItem = (itemId) => {
+      const qItemInstance = itemRefs.value[itemId];
+      // QSlideItem là component cha trực tiếp của QItem trong trường hợp này
+      if (qItemInstance && qItemInstance.$parent && typeof qItemInstance.$parent.reset === 'function') {
+        return qItemInstance.$parent.reset;
+      }
+      console.warn(`Could not find QSlideItem parent or reset function for item ${itemId}`);
+      return () => {};
     };
 
-    const onDelete = (item, reset) => {
+    const closeOpenedSlideItem = (excludeItemId = null) => {
+      if (openedSlideItemId.value && openedSlideItemId.value !== excludeItemId) {
+        const resetFn = getResetFnForItem(openedSlideItemId.value);
+        if (resetFn) {
+          resetFn();
+        }
+        openedSlideItemId.value = null;
+      }
+    };
+
+    const handleSlideInteraction = (itemId) => {
+      // Khi người dùng bắt đầu tương tác (trượt) một item mới
+      closeOpenedSlideItem(itemId); 
+      // Không set openedSlideItemId ở đây ngay, đợi sự kiện @slide để biết nó thực sự mở
+    };
+
+    const handleSlide = (details, itemId) => {
+      // details.side là 'left' hoặc 'right'
+      // details.ratio là tỷ lệ trượt (0 đến 1)
+      // details.isFinal là true nếu người dùng thả tay và slide item tự hoàn thành animation
+      
+      if (details.ratio > 0 && details.side === 'right') { // Chỉ quan tâm khi trượt sang phải để lộ nút
+        if (openedSlideItemId.value !== itemId) {
+          closeOpenedSlideItem(itemId); // Đóng item khác nếu có
+          openedSlideItemId.value = itemId; // Đánh dấu item này đang mở
+        }
+      } else if (details.ratio === 0 && openedSlideItemId.value === itemId) {
+        // Item đã đóng lại
+        openedSlideItemId.value = null;
+      }
+    };
+    
+    const onEdit = (item, resetFn) => {
+      emit('edit-item', item);
+      if (resetFn) resetFn();
+      openedSlideItemId.value = null; // Đảm bảo đóng sau action
+    };
+
+    const onDelete = (item, resetFn) => {
       emit('delete-item', item);
-      reset(); // Reset the slide item state
+      if (resetFn) resetFn();
+      openedSlideItemId.value = null; // Đảm bảo đóng sau action
     };
 
     const onImageError = (event) => {
@@ -82,7 +143,11 @@ export default defineComponent({
       formatPrice,
       onEdit,
       onDelete,
-      onImageError
+      onImageError,
+      itemRefs,
+      getResetFnForItem,
+      handleSlideInteraction,
+      handleSlide
     };
   }
 });
@@ -93,5 +158,11 @@ export default defineComponent({
 }
 .text-caption {
   font-size: 0.75rem;
+}
+/* Đảm bảo các nút trong slot chiếm đủ không gian và căn giữa */
+.q-slide-item__right { /* Đổi từ __left sang __right */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Để các nút bắt đầu từ bên trái của slot */
 }
 </style>

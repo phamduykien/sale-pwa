@@ -18,14 +18,14 @@ export function useCrud(apiService, entityName = 'mục') {
       // Giả sử apiService có phương thức getItems(token, skip, take, sort)
       // Hoặc một phương thức chung hơn như getAll(params)
       // Hiện tại, InventoryItemService.getInventoryItems có token, skip, take, sort
-      // Chúng ta cần token ở đây.
-      const token = localStorage.getItem('authToken');
-      if (!token && apiService.requiresToken !== false) { // Giả sử service có thể có cờ requiresToken
-        throw new Error('Token xác thực không tìm thấy.');
-      }
+      // Token sẽ được tự động thêm bởi interceptor trong axios.js
+      // if (!token && apiService.requiresToken !== false) { // Giả sử service có thể có cờ requiresToken
+      //   throw new Error('Token xác thực không tìm thấy.');
+      // }
       // Điều chỉnh cách gọi dựa trên phương thức thực tế của apiService
       // Ví dụ: nếu apiService.getInventoryItems là phương thức
-      const result = await apiService.getInventoryItems(token, params.skip || 0, params.take || 50, params.sort);
+      // Bỏ tham số token khi gọi apiService, vì interceptor sẽ xử lý
+      const result = await apiService.getInventoryItems(params.skip || 0, params.take || 50, params.sort);
       items.value = result; 
     } catch (e) {
       error.value = e.message;
@@ -41,12 +41,13 @@ export function useCrud(apiService, entityName = 'mục') {
     error.value = null;
     currentItem.value = null;
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token && apiService.requiresToken !== false) {
-        throw new Error('Token xác thực không tìm thấy.');
-      }
+      // Token sẽ được tự động thêm bởi interceptor trong axios.js
+      // if (!token && apiService.requiresToken !== false) {
+      //   throw new Error('Token xác thực không tìm thấy.');
+      // }
       // Giả sử apiService có phương thức getItemById(token, id) hoặc getInventoryItem(token, id)
-      const result = await apiService.getInventoryItem(token, id); // Sử dụng getInventoryItem từ InventoryItemService
+      // Bỏ tham số token khi gọi apiService
+      const result = await apiService.getInventoryItem(id); // Sử dụng getInventoryItem từ InventoryItemService
       currentItem.value = result;
       return result;
     } catch (e) {
@@ -61,12 +62,13 @@ export function useCrud(apiService, entityName = 'mục') {
     loadingItem.value = true;
     error.value = null;
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token && apiService.requiresToken !== false) {
-        throw new Error('Token xác thực không tìm thấy.');
-      }
+      // Token sẽ được tự động thêm bởi interceptor trong axios.js
+      // if (!token && apiService.requiresToken !== false) {
+      //   throw new Error('Token xác thực không tìm thấy.');
+      // }
       // Giả sử apiService có phương thức createItem(token, data) hoặc createInventoryItem(token, data)
-      const newItem = await apiService.createInventoryItem(token, data); // Sử dụng createInventoryItem
+      // Bỏ tham số token khi gọi apiService
+      const newItem = await apiService.createInventoryItem(data); // Sử dụng createInventoryItem
       showNotification('success', `Thêm ${entityName} thành công!`);
       // Tùy chọn: làm mới danh sách hoặc thêm item mới vào items.value
       // await fetchAll(); // Hoặc items.value.unshift(newItem);
@@ -84,15 +86,16 @@ export function useCrud(apiService, entityName = 'mục') {
     loadingItem.value = true;
     error.value = null;
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token && apiService.requiresToken !== false) {
-        throw new Error('Token xác thực không tìm thấy.');
-      }
+      // Token sẽ được tự động thêm bởi interceptor trong axios.js
+      // if (!token && apiService.requiresToken !== false) {
+      //   throw new Error('Token xác thực không tìm thấy.');
+      // }
       // Đảm bảo payload cho updateInventoryItem có chứa ID nếu API yêu cầu
       // Hoặc API endpoint đã chứa ID: /api/items/{id}
       // InventoryItemService.updateInventoryItem(token, payload) - payload nên là object hoàn chỉnh
       const payload = { ...data, id: id }; // Giả sử API cần id trong payload
-      const updatedItem = await apiService.updateInventoryItem(token, payload);
+      // Bỏ tham số token khi gọi apiService
+      const updatedItem = await apiService.updateInventoryItem(payload);
       showNotification('success', `Cập nhật ${entityName} thành công!`);
       
       // Cập nhật item trong danh sách items.value
@@ -117,12 +120,13 @@ export function useCrud(apiService, entityName = 'mục') {
     loadingItem.value = true;
     error.value = null;
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token && apiService.requiresToken !== false) {
-        throw new Error('Token xác thực không tìm thấy.');
-      }
+      // Token sẽ được tự động thêm bởi interceptor trong axios.js
+      // if (!token && apiService.requiresToken !== false) {
+      //   throw new Error('Token xác thực không tìm thấy.');
+      // }
       // Giả sử apiService có phương thức deleteItem(token, id) hoặc deleteInventoryItem(token, id)
-      await apiService.deleteInventoryItem(token, id); // Giả sử có hàm này
+      // Bỏ tham số token khi gọi apiService
+      await apiService.deleteInventoryItem(id); // Giả sử có hàm này
       showNotification('success', `Xóa ${entityName} thành công!`);
       
       // Xóa item khỏi danh sách items.value
