@@ -1,126 +1,102 @@
 <template>
-  <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5 text-weight-bold">Danh sách Đơn hàng</div>
-      <!-- TODO: Thêm nút tạo đơn hàng mới nếu cần -->
+  <BaseListPage
+    title="Danh sách Đơn hàng"
+    :items="orderStore.orders"
+    :loading="orderStore.loading"
+    :error="orderStore.error"
+    :has-more="orderStore.hasMoreOrders"
+    :on-refresh="handleRefresh"
+    :on-load-more="handleLoadMore"
+    item-key="order_id"
+    empty-icon="receipt_long"
+    empty-text="Không có đơn hàng nào"
+  >
+    <template #page-actions>
       <!-- <q-btn round color="primary" icon="add" @click="goToCreateOrderPage" /> -->
-    </div>
+    </template>
 
-    <!-- Filters -->
-    <div class="filter-container q-mb-md">
-      <div class="filter-row">
-        <q-select
-          v-model="selectedDateRange"
-          :options="dateRangeOptions"
-          label="Thời gian"
-          dense
-          outlined
-          emit-value
-          map-options
-          @update:model-value="applyFilters"
-          class="filter-item"
-        />
-        <q-select
-          v-model="selectedPublishStatus"
-          :options="publishInvoiceStatusOptions"
-          label="Tình trạng phát hành HĐ"
-          dense
-          outlined
-          emit-value
-          map-options
-          clearable
-          @update:model-value="applyFilters"
-          @clear="() => { selectedPublishStatus = null; applyFilters(); }"
-          class="filter-item"
-        />
-        <q-select
-          v-model="selectedTaxStatus"
-          :options="invoiceTransmissionStatusOptions"
-          label="Tình trạng gửi CQT"
-          dense
-          outlined
-          emit-value
-          map-options
-          clearable
-          @update:model-value="applyFilters"
-          @clear="() => { selectedTaxStatus = null; applyFilters(); }"
-          class="filter-item"
-        />
+    <template #filter-area>
+      <div class="filter-container">
+        <div class="filter-row">
+          <q-select
+            v-model="selectedDateRange"
+            :options="dateRangeOptions"
+            label="Thời gian"
+            dense
+            outlined
+            emit-value
+            map-options
+            @update:model-value="applyFilters"
+            class="filter-item"
+            style="min-width: 180px;"
+          />
+          <q-select
+            v-model="selectedPublishStatus"
+            :options="publishInvoiceStatusOptions"
+            label="Tình trạng phát hành HĐ"
+            dense
+            outlined
+            emit-value
+            map-options
+            clearable
+            @update:model-value="applyFilters"
+            @clear="() => { selectedPublishStatus = null; applyFilters(); }"
+            class="filter-item"
+            style="min-width: 220px;"
+          />
+          <q-select
+            v-model="selectedTaxStatus"
+            :options="invoiceTransmissionStatusOptions"
+            label="Tình trạng gửi CQT"
+            dense
+            outlined
+            emit-value
+            map-options
+            clearable
+            @update:model-value="applyFilters"
+            @clear="() => { selectedTaxStatus = null; applyFilters(); }"
+            class="filter-item"
+            style="min-width: 200px;"
+          />
+        </div>
       </div>
-    </div>
+    </template>
 
-    <q-pull-to-refresh @refresh="orderStore.refreshOrders">
-      <div v-if="orderStore.loading && orderStore.orders.length === 0" class="flex flex-center q-py-xl">
-        <q-spinner color="primary" size="3em" />
-      </div>
-      <div v-else-if="!orderStore.loading && orderStore.orders.length === 0 && !orderStore.error" class="text-center q-py-xl">
-        <q-icon name="receipt_long" size="4rem" color="grey-4" class="q-mb-md" />
-        <div class="text-h6 text-grey-6">Không có đơn hàng nào</div>
-        <q-btn
-          v-if="orderStore.error"
-          color="primary"
-          label="Thử lại"
-          @click="orderStore.refreshOrders"
-          class="q-mt-md"
-          unelevated
-        />
-      </div>
-      <div v-else-if="orderStore.error && orderStore.orders.length === 0" class="text-center q-py-xl text-negative">
-         <q-icon name="error_outline" size="4rem" color="negative" class="q-mb-md" />
-        <div class="text-h6">Không thể tải đơn hàng</div>
-        <div class="text-body2">{{ orderStore.error }}</div>
-         <q-btn
-          color="primary"
-          label="Thử lại"
-          @click="orderStore.refreshOrders"
-          class="q-mt-md"
-          unelevated
-        />
-      </div>
-      
-      <q-infinite-scroll @load="onLoadMore" :offset="250" :disable="!orderStore.hasMoreOrders || orderStore.loading">
-        <q-list separator>
-          <q-item v-for="order in orderStore.orders" :key="order.order_id" clickable v-ripple @click="viewOrderDetail(order)">
-            <q-item-section avatar>
-              <q-avatar rounded color="secondary" text-color="white">
-                <q-icon :name="getOrderStatusIcon(order.order_status)" />
-              </q-avatar>
-            </q-item-section>
+    <template #list-item-content="{ item: order }">
+      <q-item clickable v-ripple @click="viewOrderDetail(order)">
+        <q-item-section avatar>
+          <q-avatar rounded color="secondary" text-color="white">
+            <q-icon :name="getOrderStatusIcon(order.order_status)" />
+          </q-avatar>
+        </q-item-section>
 
-            <q-item-section>
-              <q-item-label class="text-weight-medium">{{ order.order_no }}</q-item-label>
-              <q-item-label caption lines="1">
-                Khách hàng: {{ order.customer_name || 'N/A' }} - SĐT: {{ order.customer_tel || 'N/A' }}
-              </q-item-label>
-              <q-item-label caption lines="1">
-                Ngày: {{ formatDate(order.order_date) }}
-              </q-item-label>
-            </q-item-section>
+        <q-item-section>
+          <q-item-label class="text-weight-medium">{{ order.order_no }}</q-item-label>
+          <q-item-label caption lines="1">
+            Khách hàng: {{ order.customer_name || 'N/A' }} - SĐT: {{ order.customer_tel || 'N/A' }}
+          </q-item-label>
+          <q-item-label caption lines="1">
+            Ngày: {{ formatDate(order.order_date) }}
+          </q-item-label>
+        </q-item-section>
 
-            <q-item-section side top>
-              <q-item-label class="text-weight-bold text-primary">{{ formatCurrency(order.total_amount) }}</q-item-label>
-              <q-badge :color="getOrderStatusColor(order.order_status)" :label="getOrderStatusText(order.order_status)" class="q-mt-xs" />
-            </q-item-section>
-          </q-item>
-        </q-list>
-        
-        <template v-slot:loading>
-          <div v-if="orderStore.loading" class="row justify-center q-my-md">
-            <q-spinner-dots color="primary" size="40px" />
-          </div>
-        </template>
-      </q-infinite-scroll>
-    </q-pull-to-refresh>
-  </q-page>
+        <q-item-section side top>
+          <q-item-label class="text-weight-bold text-primary">{{ formatCurrency(order.total_amount) }}</q-item-label>
+          <q-badge :color="getOrderStatusColor(order.order_status)" :label="getOrderStatusText(order.order_status)" class="q-mt-xs" />
+        </q-item-section>
+      </q-item>
+    </template>
+  </BaseListPage>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'; // Bỏ watch
-// import { useRouter } from 'vue-router'; // Bỏ useRouter nếu không dùng
+import { onMounted, ref } from 'vue'; // Bỏ computed
+// import { useRouter } from 'vue-router'; // Bỏ useRouter nếu viewOrderDetail chưa dùng
 import { useOrderStore } from 'src/stores/orders';
 import { date } from 'quasar';
+import BaseListPage from 'src/layouts/bases/BaseListPage.vue'; // Import BaseListPage
 
-// const router = useRouter(); // Bỏ router nếu không dùng
+// const router = useRouter(); // Bỏ router nếu viewOrderDetail chưa dùng
 const orderStore = useOrderStore();
 
 // Filter States
@@ -136,9 +112,10 @@ const dateRangeOptions = [
   // { label: 'Tùy chọn...', value: 'custom' } // Có thể thêm tùy chọn ngày
 ];
 
-const publishInvoiceStatusOptions = [
-  { label: 'Tất cả', value: -1 }, // Giả sử -1 là tất cả
-  { label: 'Chưa phát hành HĐ', value: 0 }, // Cần map giá trị này với API
+// Đổi tên biến cho nhất quán với những gì đã dùng trong template
+const publishInvoiceStatusOptions = [ 
+  { label: 'Tất cả', value: -1 },
+  { label: 'Chưa phát hành HĐ', value: 0 },
   { label: 'Đang phát hành HĐ', value: 1 },
   { label: 'Phát hành lỗi HĐ', value: 2 },
   { label: 'Đã phát hành HĐ', value: 3 },
@@ -153,7 +130,7 @@ const invoiceTransmissionStatusOptions = [
   { label: 'Gửi CQT lỗi', value: 4 },
 ];
 
-const applyFilters = () => {
+const applyFilters = () => { // Hàm này vẫn giữ nguyên để tính toán và gọi store
   let fromDateStr = orderStore.filterPayload.from_date;
   let toDateStr = orderStore.filterPayload.to_date;
 
@@ -235,14 +212,21 @@ const viewOrderDetail = (order) => {
   // router.push(`/order/${order.order_id}`);
 };
 
-const onLoadMore = async (index, done) => {
+// Các hàm này sẽ được truyền vào BaseListPage props
+const handleRefresh = async (done) => {
+  await orderStore.refreshOrders();
+  if (done) done();
+};
+
+const handleLoadMore = async (index, done) => {
   await orderStore.loadMoreOrders();
-  done(!orderStore.hasMoreOrders); // done(true) nếu không còn gì để tải
+  if (done) done(!orderStore.hasMoreOrders);
 };
 
 onMounted(() => {
-  if (orderStore.orders.length === 0) {
-    orderStore.refreshOrders();
+  // Logic fetch ban đầu đã được xử lý trong store hoặc BaseListPage có thể gọi onRefresh
+  if (orderStore.orders.length === 0 && !orderStore.loading) {
+    handleRefresh(); // Gọi refresh nếu danh sách rỗng và không đang tải
   }
 });
 </script>

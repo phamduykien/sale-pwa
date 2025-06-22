@@ -32,7 +32,7 @@
         </div>
       </template>
       
-      <q-item clickable v-ripple :ref="el => itemRefs[item.inventory_item_id] = el">
+      <q-item clickable v-ripple :ref="el => { if (el) itemRefs[item.inventory_item_id] = el; }">
         <q-item-section avatar>
           <q-avatar rounded>
             <img
@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { defineComponent, ref } from 'vue'; // Thêm ref vào đây
+import { defineComponent, ref } from 'vue';
 
 export default defineComponent({
   name: 'ProductList',
@@ -71,19 +71,15 @@ export default defineComponent({
   emits: ['edit-item', 'delete-item'],
   setup(props, { emit }) {
     const itemRefs = ref({}); 
-    const openedSlideItemId = ref(null); // ID của item đang mở
+    const openedSlideItemId = ref(null);
 
     const formatPrice = (price) => {
       if (price === null || price === undefined) return 'N/A';
       return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
-    // Hàm để lấy hàm reset của QSlideItem tương ứng
-    // QSlideItem không trực tiếp cung cấp hàm reset qua ref,
-    // nhưng chúng ta có thể tìm component cha QSlideItem từ QItem.
     const getResetFnForItem = (itemId) => {
       const qItemInstance = itemRefs.value[itemId];
-      // QSlideItem là component cha trực tiếp của QItem trong trường hợp này
       if (qItemInstance && qItemInstance.$parent && typeof qItemInstance.$parent.reset === 'function') {
         return qItemInstance.$parent.reset;
       }
@@ -102,23 +98,16 @@ export default defineComponent({
     };
 
     const handleSlideInteraction = (itemId) => {
-      // Khi người dùng bắt đầu tương tác (trượt) một item mới
       closeOpenedSlideItem(itemId); 
-      // Không set openedSlideItemId ở đây ngay, đợi sự kiện @slide để biết nó thực sự mở
     };
 
     const handleSlide = (details, itemId) => {
-      // details.side là 'left' hoặc 'right'
-      // details.ratio là tỷ lệ trượt (0 đến 1)
-      // details.isFinal là true nếu người dùng thả tay và slide item tự hoàn thành animation
-      
-      if (details.ratio > 0 && details.side === 'right') { // Chỉ quan tâm khi trượt sang phải để lộ nút
+      if (details.ratio > 0 && details.side === 'right') { 
         if (openedSlideItemId.value !== itemId) {
-          closeOpenedSlideItem(itemId); // Đóng item khác nếu có
-          openedSlideItemId.value = itemId; // Đánh dấu item này đang mở
+          closeOpenedSlideItem(itemId); 
+          openedSlideItemId.value = itemId; 
         }
       } else if (details.ratio === 0 && openedSlideItemId.value === itemId) {
-        // Item đã đóng lại
         openedSlideItemId.value = null;
       }
     };
@@ -126,17 +115,17 @@ export default defineComponent({
     const onEdit = (item, resetFn) => {
       emit('edit-item', item);
       if (resetFn) resetFn();
-      openedSlideItemId.value = null; // Đảm bảo đóng sau action
+      openedSlideItemId.value = null; 
     };
 
     const onDelete = (item, resetFn) => {
       emit('delete-item', item);
       if (resetFn) resetFn();
-      openedSlideItemId.value = null; // Đảm bảo đóng sau action
+      openedSlideItemId.value = null; 
     };
 
     const onImageError = (event) => {
-      event.target.src = 'https://cdn.quasar.dev/img/boy-avatar.png'; // Fallback image
+      event.target.src = 'https://cdn.quasar.dev/img/boy-avatar.png';
     };
 
     return {
@@ -154,15 +143,14 @@ export default defineComponent({
 </script>
 <style scoped>
 .q-item__section--avatar {
-  min-width: 50px; /* Adjust as needed */
+  min-width: 50px;
 }
 .text-caption {
   font-size: 0.75rem;
 }
-/* Đảm bảo các nút trong slot chiếm đủ không gian và căn giữa */
-.q-slide-item__right { /* Đổi từ __left sang __right */
+.q-slide-item__right {
   display: flex;
   align-items: center;
-  justify-content: flex-start; /* Để các nút bắt đầu từ bên trái của slot */
+  justify-content: flex-start;
 }
 </style>

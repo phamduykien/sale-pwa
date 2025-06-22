@@ -1,95 +1,94 @@
 import { defineStore } from 'pinia';
 import { OrderService } from 'src/services/OrderService';
-import { showNotification } from 'src/boot/notify-service'; // Sử dụng showNotification đã tạo
+// import { showNotification } from 'src/boot/notify-service'; // showNotification sẽ được gọi từ composable
+import { useEntityManagement } from 'src/composables/useEntityManagement';
+import { computed } from 'vue';
 
-export const useOrderStore = defineStore('order', {
-  state: () => ({
-    orders: [],
-    totalOrders: 0,
-    loading: false,
-    error: null,
-    // Các tham số filter/phân trang hiện tại
-    filterPayload: {
-      skip: 0,
-      take: 15, // Số lượng item mỗi lần tải
-      seller_id: -1,
-      from_date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(), // Mặc định 30 ngày trước
-      to_date: new Date().toISOString(), // Mặc định ngày hiện tại
-      ListOrderStatus: [],
-      priority: 20,
-      channel: -1,
-      key_search: "",
-      stock_id: "-1",
-      PublishInvoiceStatus: -1, // Sửa lỗi dấu ngoặc kép
-      SendTaxStatus: -1
-    }
-  }),
+export const useOrderStore = defineStore('order', () => {
+  const defaultOrderFilters = {
+    seller_id: -1,
+    from_date: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+    to_date: new Date().toISOString(),
+    ListOrderStatus: [],
+    priority: 20,
+    channel: -1,
+    key_search: "",
+    stock_id: "-1",
+    PublishInvoiceStatus: -1,
+    SendTaxStatus: -1
+  };
 
-  getters: {
-    getOrderById: (state) => (id) => {
-      return state.orders.find(order => order.order_id === id);
-    },
-    hasMoreOrders: (state) => {
-      return state.orders.length < state.totalOrders;
-    }
-  },
+  const entityManagement = useEntityManagement(OrderService, 'Đơn hàng', defaultOrderFilters, 15);
 
-  actions: {
-    async fetchOrders(isLoadMore = false) {
-      if (this.loading && !isLoadMore) return; // Tránh gọi lại nếu đang tải (trừ khi là load more)
-      
-      this.loading = true;
-      this.error = null;
+  // Expose state and methods from composable
+  // Chúng ta cần expose các refs và computed properties để chúng reactive trong component
+  // Các phương thức có thể được expose trực tiếp
 
-      if (!isLoadMore) {
-        this.orders = []; // Reset danh sách nếu là lần tải đầu hoặc refresh
-        this.filterPayload.skip = 0;
-        this.totalOrders = 0;
-      }
+  // State (reactive refs and computed)
+  const orders = computed(() => entityManagement.items.value);
+  const totalOrders = computed(() => entityManagement.totalItems.value);
+  const loading = computed(() => entityManagement.loadingList.value); // Hoặc kết hợp loadingList và loadingDetail nếu cần
+  const error = computed(() => entityManagement.errorList.value); // Hoặc errorDetail
+  const filterPayload = entityManagement.filters; // reactive object
+  const pagination = entityManagement.pagination; // reactive object
+  const hasMoreOrders = computed(() => entityManagement.hasMore.value);
+  
+  const currentOrder = computed(() => entityManagement.currentItem.value);
+  const loadingDetail = computed(() => entityManagement.loadingDetail.value);
+  const formMode = computed(() => entityManagement.formMode.value);
+  const isReadonly = computed(() => entityManagement.isReadonly.value);
 
-      try {
-        const response = await OrderService.getOrderList(this.filterPayload);
-        if (response && response.Data) {
-          if (isLoadMore) {
-            this.orders = [...this.orders, ...response.Data];
-          } else {
-            this.orders = response.Data;
-          }
-          this.totalOrders = response.Total || 0;
-          this.filterPayload.skip = this.orders.length; // Cập nhật skip cho lần tải tiếp theo
-        } else {
-          this.orders = isLoadMore ? this.orders : [];
-          this.totalOrders = isLoadMore ? this.totalOrders : 0;
-        }
-      } catch (err) {
-        this.error = err.message || 'Lỗi không xác định khi tải đơn hàng.';
-        showNotification('error', `Không thể tải danh sách đơn hàng: ${this.error}`);
-        // Không reset orders ở đây để giữ lại dữ liệu cũ nếu có khi load more lỗi
-      } finally {
-        this.loading = false;
-      }
-    },
 
-    async loadMoreOrders() {
-      if (this.loading || !this.hasMoreOrders) return;
-      await this.fetchOrders(true);
-    },
+  // Actions (methods from composable)
+  const fetchOrders = entityManagement.fetchList; // fetchList đã xử lý isLoadMore bên trong pagination
+  const loadMoreOrders = entityManagement.loadMore;
+  const refreshOrders = entityManagement.refreshList;
+  const updateFilter = entityManagement.updateFilters; // Đổi tên cho nhất quán với composable
+
+  const fetchOrderById = entityManagement.fetchItemById;
+  const setOrderForCreate = entityManagement.setItemForCreate;
+  const setOrderForEdit = entityManagement.setItemForEdit;
+  const setOrderForDuplicate = entityManagement.setItemForDuplicate;
+  const setOrderViewMode = entityManagement.setViewMode;
+  const saveOrder = entityManagement.saveItem;
+  const deleteOrder = entityManagement.deleteItem;
+  
+  // Getter (đã có trong composable hoặc có thể tạo thêm nếu cần)
+  const getOrderById = (id) => {
+    // Composable không có sẵn getter này, nhưng currentItem có thể dùng thay thế sau khi fetch
+    // Hoặc chúng ta có thể tìm trong `orders.value`
+    return orders.value.find(order => order.order_id === id);
+  };
+
+
+  return {
+    // List
+    orders,
+    totalOrders,
+    loading, // loadingList
+    error,   // errorList
+    filterPayload,
+    pagination,
+    hasMoreOrders,
+    fetchOrders,
+    loadMoreOrders,
+    refreshOrders,
+    updateFilter,
+
+    // Detail/Form
+    currentOrder,
+    loadingDetail,
+    formMode,
+    isReadonly,
+    fetchOrderById,
+    setOrderForCreate,
+    setOrderForEdit,
+    setOrderForDuplicate,
+    setOrderViewMode,
+    saveOrder,
+    deleteOrder,
     
-    async refreshOrders() {
-      await this.fetchOrders(false);
-    },
-
-    updateFilter(newFilters) {
-      // Chỉ cập nhật các key có trong newFilters
-      for (const key in newFilters) {
-        if (Object.prototype.hasOwnProperty.call(this.filterPayload, key)) {
-          this.filterPayload[key] = newFilters[key];
-        }
-      }
-      // Sau khi cập nhật filter, cần fetch lại từ đầu
-      this.refreshOrders();
-    },
-
-    // TODO: Thêm các actions khác như fetchOrderDetail, createOrder, updateOrderStatus...
-  }
+    // Getters
+    getOrderById,
+  };
 });

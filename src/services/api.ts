@@ -1,6 +1,7 @@
-import { DashboardData } from '../types/statistics'
+// import { DashboardData } from '../types/statistics' // Sẽ import từ vị trí mới
 import { mockDashboardData } from '../mocks/dashboard'
 // Import a configured axios instance from boot file
+import type { DashboardData } from 'src/models/dashboard/DashboardData'; // Import từ vị trí mới
 import { api } from 'src/boot/axios'
 
 // API_URL, fetchConfig, và instance axios cục bộ sẽ bị loại bỏ

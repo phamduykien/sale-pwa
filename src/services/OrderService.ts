@@ -1,68 +1,8 @@
 import { api } from 'src/boot/axios';
-
-// Định nghĩa kiểu dữ liệu cho payload của API lấy danh sách đơn hàng
-export interface OrderListPayload {
-  skip?: number;
-  take?: number;
-  seller_id?: number;
-  from_date?: string;
-  to_date?: string;
-  ListOrderStatus?: number[];
-  priority?: number;
-  channel?: number;
-  key_search?: string;
-  stock_id?: string;
-  PublishInvoiceStatus?: number;
-  SendTaxStatus?: number;
-}
-
-// Định nghĩa kiểu dữ liệu cho một chi tiết đơn hàng (trong mảng Details)
-export interface OrderDetailItem {
-  order_id: string;
-  quantity: number;
-  ecom_quantity: number;
-  product_name: string;
-  price: number;
-  image: string;
-  type_stock: number;
-  created_date: string;
-}
-
-// Định nghĩa kiểu dữ liệu cho một đơn hàng
-export interface Order {
-  order_id: string;
-  seller_id: string;
-  order_no: string;
-  order_date: string; // ISO 8601 date string
-  delivery_code: string;
-  channel_id: number;
-  partner_object_id: string;
-  total_amount: number;
-  shipping_partner_name: string;
-  stock_id: string;
-  order_status: number; // Cần map sang text (ví dụ: 80 -> Đã hoàn thành, 90 -> Đã hủy)
-  total_quantity: number;
-  total_item_quantity: number;
-  number_print: number;
-  recipient_tel: string;
-  recipient_name: string;
-  customer_name: string;
-  customer_tel: string;
-  priority: number;
-  create_time: string; // ISO 8601 date string
-  Details: OrderDetailItem[];
-  shipping_partner_type: number;
-  publish_status: number;
-  send_tax_status: number;
-}
-
-// Định nghĩa kiểu dữ liệu cho phản hồi từ API
-export interface OrderListResponse {
-  Total: number;
-  SummaryData?: any; // Kiểu dữ liệu cụ thể nếu cần
-  Data: Order[];
-  Empty?: boolean;
-}
+import type { OrderListPayload } from 'src/models/order/dto/OrderListPayload';
+import type { OrderListResponse } from 'src/models/order/dto/OrderListResponse';
+// Order và OrderDetailItem được sử dụng trong OrderListResponse, nên không cần import trực tiếp ở đây
+// nếu OrderListResponse đã import chúng đúng cách.
 
 const ORDER_API_PATH = '/g4/api/bizmob/EcomOrderMobs'; // Path API cho đơn hàng
 
@@ -90,6 +30,36 @@ export class OrderService {
     } catch (error) {
       console.error('Lỗi khi lấy danh sách đơn hàng:', error);
       // Ném lỗi để phía UI hoặc store có thể xử lý
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(error.response.data?.message || error.message);
+      }
+      throw error;
+    }
+  }
+
+  static async getOrdersCount(payload: OrderListPayload): Promise<number> {
+    // Bỏ qua skip, take cho count, chỉ giữ lại các filter. OrderListPayload không có sort.
+    const { skip, take, ...filterPayload } = payload;
+    try {
+      const specificHeaders = {
+        'x-ms-bid': '87e2d19c-89f7-11ef-88d3-005056b34af7',
+        'Accept': 'application/json',
+        'DeviceOS': 'ios',
+        'app-version': '6.1.3',
+        'app-version-code': '202506041',
+      };
+      // Giả sử endpoint count là /list/count và nhận cùng payload filter
+      const response = await api.post(
+        `${ORDER_API_PATH}/list/count`, // Endpoint mới cho count
+        filterPayload, // Chỉ gửi các filter
+        {
+          headers: specificHeaders,
+        }
+      );
+      // Giả sử API trả về một object có trường 'total' hoặc trực tiếp là một số
+      return response.data.total || response.data || 0;
+    } catch (error) {
+      console.error('Lỗi khi lấy tổng số lượng đơn hàng:', error);
       if (axios.isAxiosError(error) && error.response) {
         throw new Error(error.response.data?.message || error.message);
       }

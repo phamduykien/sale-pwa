@@ -1,4 +1,4 @@
-import { DashboardData } from '../types/statistics'
+import type { DashboardData } from 'src/models/dashboard/DashboardData'; // Cập nhật đường dẫn import
 
 export const mockDashboardData: DashboardData = {
   summary: {

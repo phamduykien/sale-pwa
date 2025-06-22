@@ -1,357 +1,267 @@
 <template>
-  <q-page class="q-pa-md">
-    <!-- Header -->
-    <div class="row items-center justify-between q-mb-lg">
-      <div class="text-h5 text-weight-bold">Hàng hóa</div>
+  <BaseListPage
+    title="Hàng hóa"
+    :items="productStore.products"
+    :loading="productStore.loading"
+    :error="productStore.error"
+    :has-more="productStore.hasMoreProducts"
+    :on-refresh="handleRefresh"
+    :on-load-more="handleLoadMore"
+    item-key="inventory_item_id"
+    empty-icon="inventory_2"
+    empty-text="Không có sản phẩm nào"
+  >
+    <template #page-actions>
       <q-btn
         round
-        color="grey-7"
-        text-color="white"
+        color="primary" 
         icon="add"
-        @click="$router.push('/product/add')"
+        @click="goToAddProductPage"
         aria-label="Thêm hàng hóa"
       />
-    </div>
+    </template>
 
-  
-    
-
-    <!-- Filter bar -->
-    <!-- <div class="row items-center justify-between q-mb-md">
-      <div class="text-h6 text-weight-medium">
-        {{ getCategoryName(selectedCategory) }}
-        <span class="text-caption text-grey-6">
-          ({{ filteredProducts.length }} sản phẩm)
-        </span>
+    <template #filter-area>
+      <!-- TODO: Thêm filter cho sản phẩm nếu cần -->
+      <!-- Ví dụ:
+      <div class="filter-container">
+        <div class="filter-row">
+          <q-select
+            v-model="selectedCategoryFilter"
+            :options="categoryFilterOptions"
+            label="Danh mục"
+            dense outlined emit-value map-options clearable
+            @update:model-value="applyProductFilters"
+            class="filter-item"
+          />
+        </div>
       </div>
-      
-      
-      <q-select
-        v-model="sortBy"
-        :options="sortOptions"
-        label="Sắp xếp"
-        dense
-        outlined
-        style="min-width: 150px"
-        emit-value
-        map-options
-      />
-    </div> -->
+      -->
+    </template>
 
-    <!-- Products list -->
-    <div v-if="isLoadingMore && inventoryItemList.length === 0" class="flex flex-center q-py-xl"> <!-- Hiển thị loading ban đầu -->
-      <q-spinner color="primary" size="3em" />
-    </div>
-
-    <div v-else-if="!hasMore && inventoryItemList.length === 0" class="text-center q-py-xl"> <!-- Không có sản phẩm nào và không còn để tải -->
-      <q-icon name="inventory_2" size="4rem" color="grey-4" class="q-mb-md" />
-      <div class="text-h6 text-grey-6">Không có sản phẩm nào</div>
-      <div class="text-body2 text-grey-5 q-mb-lg">
-        Thử chọn danh mục khác hoặc quay lại trang chủ
-      </div>
-      <q-btn
-        color="primary"
-        label="Về trang chủ"
-        @click="$router.push('/')"
-        unelevated
-      />
-    </div>
-
-    <div v-else>
-      <q-pull-to-refresh @refresh="refreshData">
-        <q-infinite-scroll @load="loadMoreItems" :offset="250" :disable="!hasMore || isLoadingMore">
-          <ProductList :items="inventoryItemList" @edit-item="handleEditItem" @delete-item="handleDeleteItem" />
-          <template v-slot:loading>
-          <div class="row justify-center q-my-md">
-            <q-spinner-dots color="primary" size="40px" />
+    <template #list-item-content="{ item }">
+      <!-- Sử dụng component ProductList đã có để render từng item -->
+      <!-- Tuy nhiên, ProductList hiện tại nhận một mảng `items`.
+           Chúng ta cần điều chỉnh ProductList để nó có thể render một item đơn lẻ,
+           hoặc ở đây chúng ta sẽ không dùng ProductList mà render trực tiếp QSlideItem.
+           Để đơn giản, tôi sẽ render QSlideItem trực tiếp ở đây, tương tự như ProductList.
+           Hoặc, chúng ta có thể tạo một component mới `ProductListItem.vue` và dùng ở đây.
+           
+           Tạm thời, tôi sẽ copy cấu trúc QSlideItem từ ProductList.vue vào đây.
+           LƯU Ý: Đây là sự lặp lại code, lý tưởng nhất là ProductList có thể nhận
+           một item đơn lẻ hoặc chúng ta có một ProductListItem.vue riêng.
+      -->
+      <q-slide-item
+        :key="item.inventory_item_id"
+        right-color="grey-2"
+        @left="() => handleSlideInteractionForItem(item.inventory_item_id)" 
+        @right="() => handleSlideInteractionForItem(item.inventory_item_id)"
+        @slide="(details) => handleItemSlide(details, item.inventory_item_id)"
+      >
+        <template v-slot:right>
+          <div class="row items-center no-wrap q-pa-xs full-height">
+            <q-btn 
+              icon="delete" 
+              label="Xóa" 
+              color="negative" 
+              flat 
+              dense 
+              no-caps
+              class="q-mr-xs"
+              @click="() => handleDeleteItem(item, getResetFnForProductItem(item.inventory_item_id))" 
+            />
+            <q-btn 
+              icon="edit" 
+              label="Sửa" 
+              color="primary" 
+              flat 
+              dense 
+              no-caps
+              @click="() => handleEditItem(item, getResetFnForProductItem(item.inventory_item_id))" 
+            />
           </div>
         </template>
-      </q-infinite-scroll>
-    </q-pull-to-refresh>
-    </div>
-  </q-page>
+        
+        <q-item clickable v-ripple :ref="el => { if (el) productItemRefs[item.inventory_item_id] = el; }">
+          <q-item-section avatar>
+            <q-avatar rounded>
+              <img
+                :src="item.file_name ? `https://ubuntu.cukcuk.store:8443/g4/api/dimob/InventoryItems/image?file_name=${item.file_name}` : 'https://cdn.quasar.dev/img/boy-avatar.png'"
+                style="object-fit: cover;"
+                @error="onImageError"
+              >
+            </q-avatar>
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label lines="1">{{ item.inventory_item_name }}</q-item-label>
+            <q-item-label caption lines="1">Mã: {{ item.sku_code }}</q-item-label>
+          </q-item-section>
+
+          <q-item-section side>
+            <q-item-label class="text-weight-medium">{{ formatPrice(item.unit_price) }}</q-item-label>
+            <q-item-label caption>{{ item.unit_name }}</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-slide-item>
+    </template>
+  </BaseListPage>
 </template>
 
 <script setup>
-import { ref, onMounted, onActivated, defineOptions } from 'vue' // Removed 'watch', 'computed'
-// import { useQuasar } from 'quasar' // Không cần dùng $q.notify nữa
-import { useQuasar } from 'quasar' // $q vẫn được dùng cho Dialog
-import { useRoute, useRouter } from 'vue-router'
-import { showNotification } from 'src/boot/notify-service'
-import { useProductStore } from 'src/stores/product'
-import ProductList from 'src/components/ProductList.vue'
-import { InventoryItemService } from 'src/services/InventoryItemService';
-import { useNetwork } from 'src/composables/useNetwork'; // Thêm import
+import { onMounted, onActivated, defineOptions, ref } from 'vue'; // Bỏ computed
+import { useQuasar } from 'quasar';
+import { useRoute, useRouter } from 'vue-router';
+import { useProductStore } from 'src/stores/product';
+import BaseListPage from 'src/layouts/bases/BaseListPage.vue';
+// ProductList component không còn được dùng trực tiếp ở đây nữa nếu chúng ta render item trong slot
 
-const route = useRoute()
-const router = useRouter() // Thêm useRouter
-const productStore = useProductStore()
-const $q = useQuasar()
-
-// const selectedCategory = ref(null) // Bị ESLint báo lỗi no-unused-vars
-const inventoryItemList = ref([])
-const skip = ref(0)
-const take = ref(20) // Số lượng item lấy mỗi lần, có thể điều chỉnh
-const isLoadingMore = ref(false)
-const hasMore = ref(true)
-const initialLoadDone = ref(false) // Thêm cờ theo dõi tải lần đầu
-
-
-
-
-// const filteredProducts = computed(() => { // Không còn dùng filteredProducts theo cách cũ
-//   return productStore.products
-// })
-
-const { isOnline } = useNetwork(); // Sử dụng hook useNetwork
+const route = useRoute();
+const router = useRouter();
+const productStore = useProductStore();
+const $q = useQuasar();
 
 defineOptions({
-  name: 'ProductPage' // Đổi tên component thành multi-word
-})
+  name: 'ProductPage'
+});
 
-const initializeData = async () => {
-  isLoadingMore.value = true; // Bắt đầu loading tổng thể cho dữ liệu ban đầu
-  inventoryItemList.value = [];
-  skip.value = 0;
-  hasMore.value = true; // Reset hasMore, sẽ được cập nhật bởi logic dưới
+// Logic cho QSlideItem (tương tự như trong ProductList.vue cũ)
+const productItemRefs = ref({});
+const openedProductSlideItemId = ref(null);
 
-  try {
-    // Luôn gọi fetchProducts từ store. Store sẽ xử lý online/offline.
-    await productStore.fetchProducts();
-
-    // Sau khi fetchProducts, productStore.products sẽ có dữ liệu từ API (nếu online)
-    // hoặc từ IndexedDB (nếu offline và có dữ liệu).
-    if (productStore.products && productStore.products.length > 0) {
-      inventoryItemList.value = [...productStore.products];
-      skip.value = productStore.products.length;
-      // Nếu số lượng item từ store < take, có thể không còn item nào khác từ nguồn này.
-      // Tuy nhiên, nếu online, infinite scroll vẫn có thể cố gắng tải thêm.
-      // hasMore sẽ được quản lý chính xác hơn bởi loadMoreItems khi online.
-      if (inventoryItemList.value.length < take.value && !isOnline.value) {
-          hasMore.value = false; // Nếu offline và dữ liệu ban đầu ít, thì không còn gì để tải thêm
-      } else if (inventoryItemList.value.length < take.value && isOnline.value) {
-          // Nếu online và dữ liệu ban đầu ít, vẫn có thể còn (API có thể trả về ít hơn take ở lần đầu)
-          // loadMoreItems sẽ xác định chính xác hơn
-          hasMore.value = true; 
-      } else {
-          hasMore.value = true; // Mặc định là còn nếu có dữ liệu ban đầu >= take
-      }
-
-    } else {
-      // Không có sản phẩm nào từ store (có thể do lỗi, hoặc không có data offline)
-      inventoryItemList.value = [];
-      hasMore.value = false; // Không có dữ liệu ban đầu, không thể tải thêm
-    }
-
-    // Nếu đang offline và không có dữ liệu nào được tải từ store,
-    // thì hasMore nên là false để q-infinite-scroll không cố gắng gọi loadMoreItems.
-    if (!isOnline.value && inventoryItemList.value.length === 0) {
-        hasMore.value = false;
-    }
-
-  } catch (error) {
-    console.error('Lỗi khi khởi tạo dữ liệu trang sản phẩm:', error);
-    inventoryItemList.value = []; // Đảm bảo list rỗng khi có lỗi
-    hasMore.value = false; // Không thể tải thêm khi có lỗi khởi tạo
-  } finally {
-    isLoadingMore.value = false; // Kết thúc loading ban đầu
-  }    
-  initialLoadDone.value = true; // Đánh dấu đã tải lần đầu
+const formatPrice = (price) => {
+  if (price === null || price === undefined) return 'N/A';
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 };
 
-onMounted(async () => {
-  //PDKIEN - Chỉ thực hiện khi Activated
-  // if (!initialLoadDone.value) {
-  //   await initializeData();
-  // }
-  
+const onImageError = (event) => {
+  event.target.src = 'https://cdn.quasar.dev/img/boy-avatar.png';
+};
+
+const getResetFnForProductItem = (itemId) => {
+  const qItemInstance = productItemRefs.value[itemId];
+  if (qItemInstance && qItemInstance.$parent && typeof qItemInstance.$parent.reset === 'function') {
+    return qItemInstance.$parent.reset;
+  }
+  console.warn(`Could not find QSlideItem parent or reset function for product item ${itemId}`);
+  return () => {};
+};
+
+const closeOpenedProductSlideItem = (excludeItemId = null) => {
+  if (openedProductSlideItemId.value && openedProductSlideItemId.value !== excludeItemId) {
+    const resetFn = getResetFnForProductItem(openedProductSlideItemId.value);
+    if (resetFn) resetFn();
+    openedProductSlideItemId.value = null;
+  }
+};
+
+const handleSlideInteractionForItem = (itemId) => {
+  closeOpenedProductSlideItem(itemId);
+};
+
+const handleItemSlide = (details, itemId) => {
+  if (details.ratio > 0 && details.side === 'right') {
+    if (openedProductSlideItemId.value !== itemId) {
+      closeOpenedProductSlideItem(itemId);
+      openedProductSlideItemId.value = itemId;
+    }
+  } else if (details.ratio === 0 && openedProductSlideItemId.value === itemId) {
+    openedProductSlideItemId.value = null;
+  }
+};
+// Kết thúc logic QSlideItem
+
+
+onMounted(() => {
+  if (productStore.products.length === 0 && !productStore.loading) {
+    productStore.refreshProducts();
+  }
 });
 
-// Xử lý cập nhật khi component được kích hoạt lại (do keep-alive)
-onActivated(async () => { // Thêm async nếu cần gọi initializeData
-  if (route.query.updatedProductId) {
-    const updatedId = route.query.updatedProductId;
-    // Đảm bảo productStore đã có dữ liệu mới nhất
-    // Nếu productStore.updateProduct không tự động cập nhật productStore.products một cách reactive hoàn toàn
-    // hoặc nếu có khả năng dữ liệu store bị cũ, có thể cần fetch lại item đó.
-    // Tuy nhiên, dựa trên code productStore.updateProduct, nó đã cập nhật this.products.
-    const productFromStore = productStore.getProductById(updatedId);
-
-    if (productFromStore) {
-      // productFromStore.inventory_item_id là ID chính từ store
-      // Các item p trong inventoryItemList cũng nên có p.inventory_item_id
-      const index = inventoryItemList.value.findIndex(p => String(p.inventory_item_id) === String(productFromStore.inventory_item_id));
-      if (index !== -1) {
-        // Cập nhật item trong danh sách local với dữ liệu từ store
-        inventoryItemList.value[index] = { ...inventoryItemList.value[index], ...productFromStore };
-      } else {
-        // Nếu không tìm thấy item (ví dụ: item mới được thêm và chưa có trong danh sách hiện tại từ infinite scroll)
-        // Có thể cần thêm logic để thêm item mới vào đầu danh sách hoặc tải lại một phần nếu cần.
-        // Hiện tại, giả định item đã có trong danh sách.
-        console.warn(`Product with ID ${updatedId} not found in local list after update.`);
-        // Cân nhắc: Nếu không tìm thấy, có thể là do danh sách chưa tải hết.
-        // Trong trường hợp này, việc chỉ cập nhật item có thể không đủ.
-        // Tuy nhiên, nếu người dùng vừa sửa item đó, nó phải có trong danh sách đã tải.
-      }
-    }
-    // Xóa query param sau khi xử lý để tránh xử lý lại khi không cần thiết
-    router.replace({ query: { ...route.query, updatedProductId: undefined } });
-  } else if (!initialLoadDone.value) {
-    // Nếu component được kích hoạt lại và chưa từng tải dữ liệu ban đầu (trường hợp hiếm với keep-alive)
-    // thì mới gọi initializeData.
-    await initializeData();
+onActivated(() => {
+  // Logic onActivated có thể giữ nguyên hoặc điều chỉnh nếu cần
+  if (!route.query.updatedProductId && productStore.products.length === 0 && !productStore.loading) {
+     // Nếu không có updatedProductId và danh sách rỗng, có thể refresh
+     // productStore.refreshProducts();
   }
-  // Nếu initialLoadDone.value là true và không có updatedProductId, không làm gì cả, giữ nguyên trạng thái.
+  // Xử lý updatedProductId nên được thực hiện trong store hoặc thông qua watch nếu cần thiết
 });
 
-const loadMoreItems = async (index, done) => {
-  const callback = done || (() => {});
+const handleRefresh = async (done) => {
+  await productStore.refreshProducts();
+  if (done) done();
+};
 
-  // 1. Nếu đang offline, không thực hiện gọi API để "load more"
-  if (!isOnline.value) {
-    console.log('Đang offline, không tải thêm sản phẩm từ API qua infinite scroll.');
-    // Không thay đổi hasMore ở đây vì nó đã được set bởi initializeData
-    // Hoặc có thể set hasMore = false nếu chắc chắn không thể load thêm khi offline
-    // hasMore.value = false; // Cân nhắc: Nếu offline, không thể load thêm từ API
-    callback(true); // Báo không còn gì để tải (từ API)
-    return;
-  }
+const handleLoadMore = async (index, done) => {
+  await productStore.loadMoreProducts();
+  if (done) done(!productStore.hasMoreProducts);
+};
 
-  // 2. Các điều kiện dừng khác (đang tải, hoặc đã báo hết)
-  if (isLoadingMore.value || !hasMore.value) {
-    callback(true);
-    return;
-  }
+const goToAddProductPage = () => {
+  // Store sẽ gọi setProductForCreate khi trang chi tiết được mounted với mode 'add'
+  router.push('/product/add?mode=add'); 
+};
 
-  isLoadingMore.value = true;
-  try {
-    // Token sẽ được tự động thêm bởi interceptor
-    // const token = localStorage.getItem('authToken');
-    // if (!token) {
-    //   console.error('Không tìm thấy token xác thực cho loadMoreItems.');
-    //   hasMore.value = false; // Không có token, không thể tải thêm
-    //   callback(true);
-    //   return;
-    // }
-
-    // skip.value được cập nhật từ initializeData hoặc các lần loadMoreItems trước
-    // Bỏ tham số token
-    const newItems = await InventoryItemService.getInventoryItems(skip.value, take.value);
-
-    if (newItems && newItems.length > 0) {
-      inventoryItemList.value.push(...newItems);
-      skip.value += newItems.length;
-      if (newItems.length < take.value) {
-        hasMore.value = false; // API trả về ít hơn số lượng yêu cầu, coi như hết
-      } else {
-        hasMore.value = true; // Vẫn còn khả năng có thêm
-      }
-    } else {
-      hasMore.value = false; // API không trả về item mới, hoặc trả về mảng rỗng
-    }
-    callback(!hasMore.value); // done(true) nếu hasMore là false (hết)
-  } catch (error) {
-    console.error('Lỗi khi tải thêm sản phẩm (loadMoreItems):', error);
-    hasMore.value = false; // Lỗi khi tải, coi như hết
-    callback(true);
-  } finally {
-    isLoadingMore.value = false;
-  }
-}
-
-const refreshData = async (done) => {
-  // Reset trạng thái để tải lại từ đầu
-  skip.value = 0;
-  // inventoryItemList.value = []; // Không reset ở đây để tránh list nháy, initializeData sẽ làm
-  hasMore.value = true;
-  initialLoadDone.value = false; // Để initializeData chạy lại hoàn toàn
-  
-  await initializeData(); // Gọi hàm tải dữ liệu ban đầu
-  
-  // Sau khi tải xong, gọi done() để QPullToRefresh biết là đã hoàn thành
-  done();
-}
-
-// Watch for route query changes
-// watch(() => route.query.category, (newCategoryId) => {
-//   if (newCategoryId) {
-//     // Xử lý khi category thay đổi nếu cần
-//     console.log('Category changed to:', newCategoryId);
-//   }
-// })
-
-const handleEditItem = (item) => {
-  console.log('Edit item:', item)
+const handleEditItem = (item, resetFn) => {
   if (item && item.inventory_item_id) {
-    router.push(`/product/${item.inventory_item_id}`)
+    router.push(`/product/${item.inventory_item_id}?mode=edit`);
   } else {
-    console.error('Không thể chỉnh sửa: ID hàng hóa không hợp lệ.', item)
-    showNotification('error', 'Không thể mở trang chỉnh sửa, ID hàng hóa không tồn tại.')
+    $q.notify({
+      color: 'negative',
+      icon: 'error',
+      message: 'Không thể mở trang sửa, ID hàng hóa không tồn tại.'
+    });
   }
-}
+  if (resetFn) resetFn();
+  openedProductSlideItemId.value = null;
+};
 
-const handleDeleteItem = (item) => {
-  console.log('Delete item:', item)
+const handleDeleteItem = (item, resetFn) => {
   $q.dialog({
     title: 'Xác nhận xóa',
     message: `Bạn có chắc chắn muốn xóa "${item.inventory_item_name}" không?`,
     persistent: true,
-    ok: {
-      label: 'Xóa',
-      color: 'negative',
-      flat: false
-    },
-    cancel: {
-      label: 'Hủy',
-      color: 'grey', 
-      flat: false,
-    }
+    ok: { label: 'Xóa', color: 'negative', flat: false },
+    cancel: { label: 'Hủy', color: 'grey', flat: false }
   }).onOk(async () => {
-    try {
-      // Gọi API xóa ở đây nếu cần, không cần truyền token
-      // await InventoryItemService.deleteInventoryItem(item.inventory_item_id);
-      
-      // Xóa item khỏi danh sách local
-      inventoryItemList.value = inventoryItemList.value.filter(
-        (i) => i.inventory_item_id !== item.inventory_item_id
-      );
-      showNotification('success', `Đã xóa: ${item.inventory_item_name}`)
-    } catch (error) {
-      console.error('Lỗi khi xóa sản phẩm:', error);
-      showNotification('error', 'Xóa sản phẩm thất bại. Vui lòng thử lại.')
-    }
-  })
-}
+    await productStore.deleteProduct(item.inventory_item_id);
+  });
+  if (resetFn) resetFn();
+  openedProductSlideItemId.value = null;
+};
+
+// TODO: Thêm logic cho applyProductFilters nếu có filter UI
+// const selectedCategoryFilter = ref(null);
+// const categoryFilterOptions = ref([...]);
+// const applyProductFilters = () => {
+//   productStore.updateProductFilters({ category_id: selectedCategoryFilter.value });
+// };
+
 </script>
 
 <style scoped>
-.category-card {
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
+/* Giữ lại style cần thiết hoặc xóa nếu không dùng */
+.filter-container {
+  width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
 }
-
-.category-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+.filter-row {
+  display: flex;
+  flex-wrap: nowrap;
 }
-
-.category-selected {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-color: #667eea;
+.filter-item {
+  min-width: 180px; 
+  margin-right: 16px;
+  flex-shrink: 0;
 }
-
-.category-selected .q-card-section {
-  color: white;
+.filter-item:last-child {
+  margin-right: 0;
 }
-
-.category-selected .text-grey-6 {
-  color: rgba(255, 255, 255, 0.8) !important;
-}
-
-@media (max-width: 599px) {
-  .category-card {
-    min-height: 140px;
-  }
+/* CSS cho QSlideItem (tương tự ProductList.vue cũ) */
+.q-slide-item__right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 </style>
