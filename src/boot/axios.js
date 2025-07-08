@@ -4,6 +4,7 @@ import axios from 'axios'
 // Tạo instance axios với cấu hình cơ bản
 // Khai báo router ở phạm vi module để interceptor có thể truy cập
 let routerInstance = null;
+let tenantStore = null;
 
 const api = axios.create({
   baseURL: '/', // Thay đổi URL này theo backend của bạn
@@ -21,6 +22,29 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `${token}`
     }
+    
+    // Tự động thêm env vào path nếu có
+    const env = localStorage.getItem('tenant_env')
+    if (env && config.url) {
+      // Các URL không cần env prefix (login endpoints) 
+      const skipEnvPaths = [
+        '/api/oauth/',
+        '/api/authmob/Authens/login'
+      ]
+      
+      // Kiểm tra xem URL đã có env prefix chưa
+      const hasEnvPrefix = config.url.startsWith(`/${env}/`)
+      const shouldSkip = skipEnvPaths.some(path => config.url.includes(path))
+      
+      // Nếu chưa có env prefix và không phải URL cần skip
+      if (!hasEnvPrefix && !shouldSkip && !config.url.startsWith('http')) {
+        // Loại bỏ dấu / đầu nếu có
+        const cleanUrl = config.url.startsWith('/') ? config.url.substring(1) : config.url
+        config.url = `/${env}/${cleanUrl}`
+        console.log('Auto-added env prefix:', config.url)
+      }
+    }
+    
     return config
   },
   (error) => {
@@ -38,10 +62,18 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Logout user nếu unauthorized
       localStorage.removeItem('authToken') // Đổi key thành authToken
+      
+      // Clear tenant info
+      if (tenantStore) {
+        tenantStore.clear()
+      } else {
+        // Fallback: clear trực tiếp từ localStorage
+        localStorage.removeItem('tenant_env')
+        localStorage.removeItem('tenant_id')
+        localStorage.removeItem('tenant_name')
+      }
+      
       // Redirect to login page
-      // Cân nhắc sử dụng router.push('/login') nếu có thể truy cập router ở đây
-      // Hoặc phát một sự kiện để MainLayout hoặc App.vue xử lý redirect
-      // window.location.href = '/login' // Thay thế bằng router.push
       if (routerInstance) {
         // Nếu đang ở hash mode, path phải là '/login', router tự thêm #
         // Nếu đang ở history mode, path cũng là '/login'

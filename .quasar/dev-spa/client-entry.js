@@ -150,7 +150,9 @@ createQuasarApp(createApp, quasarUserOptions)
       
       import('boot/numpad-directive'),
       
-      import('boot/notify-service')
+      import('boot/notify-service'),
+      
+      import('boot/websocket')
       
     ]).then(bootFiles => {
       const boot = mapFn(bootFiles).filter(entry => typeof entry === 'function')

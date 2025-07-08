@@ -91,13 +91,13 @@
 
       <q-separator inset="item" />
 
-      <q-item clickable @click="showComingSoon('Thông báo')">
+      <q-item clickable @click="showNotificationSettings">
         <q-item-section avatar>
           <q-icon name="notifications" color="primary" />
         </q-item-section>
         <q-item-section>
-          <q-item-label>Thông báo</q-item-label>
-          <q-item-label caption>Cài đặt thông báo khuyến mãi</q-item-label>
+          <q-item-label>Cài đặt thông báo</q-item-label>
+          <q-item-label caption>{{ notificationStatusText }}</q-item-label>
         </q-item-section>
         <q-item-section side>
           <q-icon name="chevron_right" />
@@ -274,6 +274,7 @@ import { useRouter } from 'vue-router' // Thêm useRouter
 import { useCartStore } from 'src/stores/cart'
 import { Dialog } from 'quasar' // Thêm useQuasar, không cần $q nữa
 import { showNotification } from 'src/boot/notify-service'
+import notificationService from 'src/services/NotificationService'
 
 
 const cartStore = useCartStore()
@@ -308,6 +309,33 @@ const authToken = ref(localStorage.getItem('authToken')) // Key này đã đúng
 
 const isLoggedIn = computed(() => !!authToken.value)
 
+// Notification settings state
+const notificationStatus = ref({
+  supported: false,
+  permission: 'default',
+  subscribed: false
+})
+
+const notificationStatusText = computed(() => {
+  if (!notificationStatus.value.supported) {
+    return 'Không được hỗ trợ'
+  }
+  
+  if (notificationStatus.value.permission === 'denied') {
+    return 'Đã từ chối quyền thông báo'
+  }
+  
+  if (notificationStatus.value.permission === 'granted' && notificationStatus.value.subscribed) {
+    return 'Đã bật thông báo'
+  }
+  
+  if (notificationStatus.value.permission === 'granted') {
+    return 'Đã cấp quyền, chưa đăng ký'
+  }
+  
+  return 'Chưa cấp quyền thông báo'
+})
+
 // Cập nhật authToken khi component được mounted
 onMounted(() => {
   authToken.value = localStorage.getItem('authToken') // Key này đã đúng
@@ -337,12 +365,7 @@ const userStatus = computed(() => {
 
 const handleLogout = () => {
   localStorage.removeItem('authToken') // Key này đã đúng
-  // Bỏ dòng authToken.value = null để tránh giao diện cập nhật trước khi chuyển trang.
-  // Khi trang được điều hướng đi, component này sẽ unmount,
-  // và nếu quay lại, onMounted sẽ đọc lại trạng thái đúng từ localStorage.
-  
-  // (Tùy chọn) Reset user store nếu có
-  // Ví dụ: userStore.clearUser() // Giả sử có userStore
+  localStorage.removeItem('socketToken')
 
   showNotification('success', 'Đăng xuất thành công!')
   router.push('/login')
@@ -712,6 +735,142 @@ async function forceReloadApp() {
     }, 500);
   }
 }
+
+// --- Notification Settings Logic ---
+async function updateNotificationStatus() {
+  try {
+    const status = await notificationService.getSubscriptionStatus()
+    notificationStatus.value = {
+      supported: status.supported,
+      permission: status.permission || 'default',
+      subscribed: status.subscribed || false
+    }
+  } catch (error) {
+    console.error('Error updating notification status:', error)
+    notificationStatus.value = {
+      supported: false,
+      permission: 'default',
+      subscribed: false
+    }
+  }
+}
+
+async function showNotificationSettings() {
+  await updateNotificationStatus()
+  
+  let message = `
+    <div>
+      <p><strong>Trạng thái thông báo hiện tại:</strong></p>
+      <ul>
+        <li>Hỗ trợ: ${notificationStatus.value.supported ? 'Có' : 'Không'}</li>
+        <li>Quyền: ${getPermissionText(notificationStatus.value.permission)}</li>
+        <li>Đăng ký: ${notificationStatus.value.subscribed ? 'Đã đăng ký' : 'Chưa đăng ký'}</li>
+      </ul>
+    `
+  
+  if (!notificationStatus.value.supported) {
+    message += `<p class="text-negative">Trình duyệt này không hỗ trợ thông báo.</p>`
+  } else if (notificationStatus.value.permission === 'denied') {
+    message += `
+      <p class="text-negative">Quyền thông báo đã bị từ chối.</p>
+      <p>Để bật lại, vui lòng:</p>
+      <ol>
+        <li>Nhấp vào biểu tượng khóa/thông tin bên trái thanh địa chỉ</li>
+        <li>Cho phép thông báo</li>
+        <li>Tải lại trang</li>
+      </ol>
+    `
+  } else if (notificationStatus.value.permission === 'granted' && !notificationStatus.value.subscribed) {
+    message += `<p>Đã có quyền nhưng chưa đăng ký. Bạn có muốn đăng ký nhận thông báo không?</p>`
+  } else if (notificationStatus.value.permission === 'granted' && notificationStatus.value.subscribed) {
+    message += `<p class="text-positive">Thông báo đã được thiết lập đầy đủ!</p>`
+  }
+  
+  message += `</div>`
+  
+  const actions = []
+  
+  if (notificationStatus.value.supported && notificationStatus.value.permission !== 'denied') {
+    if (notificationStatus.value.permission !== 'granted') {
+      actions.push({
+        label: 'Cấp quyền thông báo',
+        color: 'primary',
+        unelevated: true,
+        handler: () => requestNotificationPermission()
+      })
+    } else if (!notificationStatus.value.subscribed) {
+      actions.push({
+        label: 'Đăng ký nhận thông báo',
+        color: 'primary', 
+        unelevated: true,
+        handler: () => subscribeToNotifications()
+      })
+    }
+    
+    actions.push({
+      label: 'Test thông báo',
+      color: 'secondary',
+      flat: true,
+      handler: () => testNotification()
+    })
+  }
+  
+  actions.push({
+    label: 'Đóng',
+    color: 'grey',
+    flat: true
+  })
+
+  Dialog.create({
+    title: 'Cài đặt thông báo',
+    message: message,
+    html: true,
+    actions: actions
+  })
+}
+
+function getPermissionText(permission) {
+  switch (permission) {
+    case 'granted': return 'Đã cấp'
+    case 'denied': return 'Đã từ chối'
+    case 'default': return 'Chưa quyết định'
+    default: return 'Không xác định'
+  }
+}
+
+async function requestNotificationPermission() {
+  const granted = await notificationService.requestPermission()
+  if (granted) {
+    await updateNotificationStatus()
+    showNotification('success', 'Đã cấp quyền thông báo thành công!')
+  }
+}
+
+async function subscribeToNotifications() {
+  const subscribed = await notificationService.subscribeUserToPush()
+  if (subscribed) {
+    await updateNotificationStatus()
+    showNotification('success', 'Đã đăng ký nhận thông báo thành công!')
+  }
+}
+
+async function testNotification() {
+  const success = await notificationService.testNotification()
+  if (success) {
+    showNotification('info', 'Đã gửi thông báo test. Kiểm tra thông báo hệ thống.')
+  }
+}
+
+// Cập nhật onMounted để khởi tạo notification service và cập nhật status
+onMounted(() => {
+  authToken.value = localStorage.getItem('authToken') // Key này đã đúng
+  // Lắng nghe sự kiện storage để cập nhật nếu token thay đổi ở tab khác
+  window.addEventListener('storage', handleStorageChange);
+  
+  // Khởi tạo notification service và cập nhật trạng thái
+  notificationService.init()
+  updateNotificationStatus()
+})
 </script>
 
 <style scoped>

@@ -46,7 +46,9 @@ import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router'; // Thêm useRoute
 // import axios, { HttpStatusCode } from 'axios'; // Sử dụng instance api từ boot
 import { api } from 'src/boot/axios'; // Import instance api
-import { HttpStatusCode } from 'axios'; // HttpStatusCode vẫn có thể cần thiết
+import { HttpStatusCode } from 'axios';
+import mwsService from 'src/services/MWSService';
+import { useTenantStore } from 'src/stores/tenant';
 
 export default {
   setup() {
@@ -61,6 +63,7 @@ export default {
     const showTenantSelection = ref(false);
     const selectedTenant = ref(null);
     const deviceId = "phamduykienpwa";//|| navigator.userAgent; // Get the device ID
+    const tenantStore = useTenantStore(); // Khởi tạo tenant store
     const login = async () => {
       try {
 
@@ -151,10 +154,12 @@ export default {
 
 
 
-    onMounted(() => {
+    onMounted(async () => {
       // Check if there's an auth token
       const token = localStorage.getItem('authToken');
       if (token) {
+        // Nếu có authToken, thử khởi tạo MWS
+        await mwsService.initializeAfterLogin();
         router.push('/'); // Redirect if already logged in
       }
     });
@@ -164,6 +169,10 @@ export default {
         const currentTenant = selectedTenant.value;
         const env = currentTenant.env;
         const tenantId = currentTenant.tenant_id;
+        
+        // Lưu tenant info vào store TRƯỚC khi gọi API
+        tenantStore.setTenantInfo(currentTenant);
+        
         const response = await api.get( // Sử dụng api instance
           `/${env}/api/authmob/Authens/login/${tenantId}?keyCacheMID=${loginResponse.value.KeyCacheMID}`,
           {
@@ -183,6 +192,8 @@ export default {
         if (response.status === HttpStatusCode.Ok) {
           // Store the authentication token
           localStorage.setItem('authToken', response.data.token);
+          // Khởi tạo MWS sau khi đăng nhập thành công
+          await mwsService.initializeAfterLogin();
           // Redirect to the original intended page or to home
           const redirectPath = route.query.redirect || '/';
           router.push(redirectPath);
@@ -207,7 +218,6 @@ export default {
       showTenantSelection,
       selectedTenant,
       getAuthToken
-
     };
   },
 };

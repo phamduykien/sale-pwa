@@ -1,7 +1,7 @@
 import { api } from 'src/boot/axios'; // Import instance api đã cấu hình
 import type { InventoryItem } from 'src/models/product/InventoryItem'; // Import interface
 
-const SERVICE_PATH = '/g4/api/dimob/InventoryItems'; // Path cụ thể cho service này
+const SERVICE_PATH = 'api/dimob/InventoryItems'; // Path cụ thể cho service này (bỏ /g4 để interceptor tự thêm env)
 
 export interface InventoryItemsPayload {
   skip?: number;

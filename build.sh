@@ -24,7 +24,8 @@ fi
 echo "Running new container: $CONTAINER_NAME..."
 # Bạn có thể cần điều chỉnh cổng publish tùy theo cấu hình ứng dụng của bạn
 # Ví dụ: -p 8080:80 nếu ứng dụng trong container chạy trên cổng 80
-docker run -d --name $CONTAINER_NAME -p 8080:80 $IMAGE_NAME
+# Thêm --restart unless-stopped để container tự khởi động lại
+docker run -d --name $CONTAINER_NAME --restart unless-stopped -p 8080:80 $IMAGE_NAME
 
-echo "Container $CONTAINER_NAME is running."
-
+echo "Container $CONTAINER_NAME is running with restart policy 'unless-stopped'."
+echo "Bạn có thể truy cập ứng dụng tại http://localhost:8080 (hoặc cổng bạn đã cấu hình nếu dùng reverse proxy)."

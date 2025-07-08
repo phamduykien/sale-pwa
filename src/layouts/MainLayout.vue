@@ -31,6 +31,25 @@
           class="q-mr-sm"
         />
 
+        <!-- Notification Bell Button -->
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          @click="$router.push('/notifications')"
+          class="relative-position q-mr-sm"
+          title="Thông báo"
+        >
+          <q-badge
+            v-if="notificationStore.unreadCount > 0"
+            color="red"
+            floating
+            rounded
+          >
+            {{ notificationStore.unreadCount }}
+          </q-badge>
+        </q-btn>
+
         <!-- Cart button with badge -->
         <q-btn
           flat
@@ -116,6 +135,7 @@
         />
       </q-tabs>
     </q-footer>
+
   </q-layout>
 </template>
 
@@ -127,13 +147,19 @@ import { useProductStore } from 'src/stores/product'
 // import { useQuasar } from 'quasar' // Không cần dùng $q.notify nữa
 import { useNetwork } from 'src/composables/useNetwork'
 import { showNotification } from 'src/boot/notify-service'
+import { useNotificationStore } from 'src/stores/notifications'
+import notificationService from 'src/services/NotificationService'
+import { useTenantStore } from 'src/stores/tenant'
 
 // const $q = useQuasar() // Không cần dùng $q.notify nữa
 const router = useRouter()
 const route = useRoute()
 const cartStore = useCartStore()
 const productStore = useProductStore()
+const notificationStore = useNotificationStore()
+const tenantStore = useTenantStore()
 const { isOnline, showOfflineIndicator } = useNetwork()
+
 
 // Theo dõi sự thay đổi trạng thái mạng để đồng bộ
 watch(isOnline, async (newValue) => {
@@ -310,6 +336,44 @@ function testLocalNotification() {
     showNotification('error', 'Không thể hiển thị thông báo local.');
   });
 }
+
+// --- Notification Service Initialization ---
+function initializeNotificationService() {
+  // Khởi tạo notification service
+  notificationService.init()
+}
+
+// Thêm test notification để demo
+function addTestNotification() {
+  notificationStore.addNotification({
+    title: 'Đơn hàng mới',
+    message: 'Bạn có một đơn hàng mới từ khách hàng Nguyễn Văn A',
+    type: 'success',
+    icon: 'shopping_cart'
+  })
+}
+
+// Khởi tạo notification service khi component mount
+onMounted(() => {
+  cartStore.loadCartFromStorage();
+  updateActiveTab();
+  
+  // Load tenant info từ localStorage khi app khởi động
+  tenantStore.loadFromStorage();
+  
+  // Khởi tạo notification service
+  initializeNotificationService()
+
+  // Hướng dẫn test push từ DevTools
+  console.log("Để giả lập Push Event từ server, mở Chrome DevTools > Application > Service Workers, tìm service worker của trang này, và sử dụng ô 'Push'.");
+  console.log("Payload ví dụ: {\"title\": \"Test Push\", \"body\": \"Đây là push từ DevTools!\", \"icon\": \"/icons/favicon-128x128.png\"}");
+  console.warn("LƯU Ý: Bạn cần thay thế 'YOUR_PUBLIC_VAPID_KEY_HERE' trong MainLayout.vue bằng VAPID key thực tế của bạn để push notification hoạt động đúng cách với server.");
+  
+  // Thêm một notification demo (có thể xóa sau)
+  setTimeout(() => {
+    addTestNotification()
+  }, 2000)
+});
 </script>
 
 <style scoped>

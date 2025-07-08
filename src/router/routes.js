@@ -9,6 +9,7 @@ const routes = [
       { path: 'products', name: 'products', component: () => import('src/pages/product/ProductsPage.vue') },     
       { path: 'product/:id', component: () => import('src/pages/product/ProductDetailPage.vue') },      
       { path: 'search', component: () => import('src/pages/system/SearchPage.vue') },
+      { path: 'notifications', component: () => import('src/pages/system/NotificationPage.vue') },
       { path: 'profile', component: () => import('src/pages/system/ProfilePage.vue') }
     ]
   },

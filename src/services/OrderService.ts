@@ -4,7 +4,7 @@ import type { OrderListResponse } from 'src/models/order/dto/OrderListResponse';
 // Order và OrderDetailItem được sử dụng trong OrderListResponse, nên không cần import trực tiếp ở đây
 // nếu OrderListResponse đã import chúng đúng cách.
 
-const ORDER_API_PATH = '/g4/api/bizmob/EcomOrderMobs'; // Path API cho đơn hàng
+const ORDER_API_PATH = 'api/bizmob/EcomOrderMobs'; // Path API cho đơn hàng (bỏ /g4 để interceptor tự thêm env)
 
 export class OrderService {
   static async getOrderList(payload: OrderListPayload): Promise<OrderListResponse> {
